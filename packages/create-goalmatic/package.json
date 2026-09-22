@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "bin": {
-    "create-goalmatic": "./bin/create-goalmatic.mjs"
+    "create-goalmatic": "bin/create-goalmatic.mjs"
   },
   "files": [
     "bin",
@@ -28,5 +28,5 @@
   "bugs": {
     "url": "https://github.com/kromate/goalmatic-cli/issues"
   },
-  "homepage": "https://github.com/kromate/goalmatic-cli#readme"
+  "homepage": "https://goalmatic.mintlify.site"
 }
