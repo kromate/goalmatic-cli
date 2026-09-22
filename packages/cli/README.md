@@ -2,8 +2,10 @@
 
 Public Node.js CLI for creating and managing Goalmatic Sites and Apps.
 
-This beta is implemented in the repository but has not been published to npm.
-It requires Node.js 22 or newer and has no runtime dependencies.
+Install the public beta with `npm install -g goalmatic@beta`, or run commands
+with `npx goalmatic@beta`. Node.js 22.12 or newer is required.
+
+Read the [Goalmatic developer docs](https://goalmatic.mintlify.site/quickstart).
 
 ```bash
 goalmatic login

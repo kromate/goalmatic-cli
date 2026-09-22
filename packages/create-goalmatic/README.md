@@ -1,10 +1,13 @@
 # create-goalmatic
 
-Initializer for Goalmatic Sites and Apps. This beta is implemented locally but
-has not been published to npm.
+Create Vue Sites and authenticated Apps with the Goalmatic beta starter.
+Requires Node.js 22.12 or newer.
 
 ```bash
-npx create-goalmatic my-todo
+npm create goalmatic@beta my-todo
 ```
 
-It uses the same authenticated, resumable create flow as `goalmatic`.
+The wizard signs in, selects your account, creates a todo project, and connects
+GitHub. Use `-- --local --type site` for a local demo without an account.
+
+Read the [Goalmatic developer docs](https://goalmatic.mintlify.site/quickstart).
