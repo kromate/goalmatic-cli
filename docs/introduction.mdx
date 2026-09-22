@@ -13,4 +13,4 @@ Use a **Site** for public pages and simple forms. Use an **App** for a signed-in
 npm install -g goalmatic@0.1.0-beta.1
 ```
 
-Until npm publication, run the local entry point with `node packages/cli/bin/goalmatic.mjs --help`. The local checkout currently supports the connected create flow. The offline `--local` scaffold is being added and is not part of the released command contract yet.
+Until npm publication, run the local entry point with `node packages/cli/bin/goalmatic.mjs --help`. Use `create my-todos --local --type site --name my-todos` to generate a todo project without authentication. Connected setup signs in to Goalmatic and creates or links the remote project.
