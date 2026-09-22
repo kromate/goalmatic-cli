@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-const STORAGE_KEY = 'goalmatic-vue-todo:tasks'
 const projectType = '{{PROJECT_TYPE}}'
 const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
 const isHostedApp = projectType === 'app' && !isLocalhost
@@ -30,19 +29,6 @@ function normalize(record) {
   return { id: String(record.id), title: String(record.title || '').trim(), completed: Boolean(record.completed) }
 }
 
-function saveDemo() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks.value))
-}
-
-function loadDemo() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    tasks.value = Array.isArray(saved) ? saved.map(normalize).filter(task => task.title) : []
-  } catch {
-    tasks.value = []
-  }
-}
-
 function requireRuntime() {
   if (!window.GoalmaticAuth || !window.GoalmaticData) {
     throw new Error('This hosted App needs GoalmaticAuth and GoalmaticData. Reopen it from Goalmatic after installation, then reload.')
@@ -55,7 +41,7 @@ async function reload() {
   loading.value = true
   try {
     if (!isHostedApp) {
-      loadDemo()
+      tasks.value = []
       return
     }
     requireRuntime()
@@ -81,7 +67,6 @@ async function addTask() {
   try {
     if (!isHostedApp) {
       tasks.value.unshift({ id: crypto.randomUUID(), title, completed: false })
-      saveDemo()
     } else {
       requireRuntime()
       await window.GoalmaticData.submit('todos', { title, completed: false })
@@ -102,7 +87,6 @@ async function toggleTask(task) {
   try {
     if (!isHostedApp) {
       task.completed = !task.completed
-      saveDemo()
     } else {
       requireRuntime()
       await window.GoalmaticData.update('todos', task.id, { title: task.title, completed: !task.completed })
@@ -122,7 +106,6 @@ async function removeTask(task) {
   try {
     if (!isHostedApp) {
       tasks.value = tasks.value.filter(item => item.id !== task.id)
-      saveDemo()
     } else {
       requireRuntime()
       await window.GoalmaticData.remove('todos', task.id)
@@ -166,7 +149,7 @@ onUnmounted(() => {
         <span class="mode" :class="mode">{{ mode === 'live' ? 'Live' : mode === 'demo' ? 'Demo' : 'Local' }}</span>
       </header>
 
-      <p v-if="mode === 'demo'" class="demo-note">Demo mode saves sample tasks only in this browser. Open the installed App in Goalmatic for private account data.</p>
+      <p v-if="mode !== 'live'" class="demo-note">Tasks stay in this page only and reset when you refresh. Open the installed App in Goalmatic for private account data.</p>
 
       <p class="summary">{{ remaining }} {{ remaining === 1 ? 'task' : 'tasks' }} left <span v-if="completed">· {{ completed }} done</span></p>
 
@@ -178,7 +161,7 @@ onUnmounted(() => {
 
       <div class="toolbar" aria-label="Filter tasks">
         <button v-for="option in [{ id: 'all', label: 'All' }, { id: 'open', label: 'Open' }, { id: 'done', label: 'Done' }]" :key="option.id" class="filter" :class="{ selected: filter === option.id }" type="button" :aria-pressed="filter === option.id" @click="filter = option.id">{{ option.label }}</button>
-        <button class="reload" type="button" :disabled="loading || busy" @click="reload">Reload</button>
+        <button v-if="mode === 'live'" class="reload" type="button" :disabled="loading || busy" @click="reload">Reload</button>
       </div>
 
       <p v-if="error" class="error" role="alert">{{ error }}</p>

@@ -1,16 +1,16 @@
 ---
 title: Goalmatic developer tools
-description: Create and ship a local Vue Site or App.
+description: Create and ship a Vue Site or App with the beta CLI.
 ---
 
 The Goalmatic CLI connects a local Vue project to a Goalmatic Site or App. It can create the starter and its remote project, sign you in, select an account, link an existing project into an empty directory, connect GitHub, and send a preview or release request.
 
-The CLI is prerelease. The package and its service endpoints are still being released. These pages describe the intended public contract and local checkout commands until that release is complete.
+The CLI is in beta. Commands and server responses may change between beta releases.
 
-Use a **Site** for public pages and simple forms. Use an **App** for a signed-in product that uses Goalmatic Tables, workflows, integrations, or account data. Both start from the Vue todo project. The Site uses browser storage locally. The App uses the Goalmatic runtime and declares its `todos` Table.
+Use a **Site** for public pages and simple forms. Use an **App** for a signed-in product that uses Goalmatic Tables, workflows, integrations, or account data. Both start from the Vue todo project. The Site and local App Demo keep tasks in page memory and reset on refresh. A hosted App uses the Goalmatic runtime and declares its `todos` Table.
 
 ```bash
-npm install -g goalmatic@0.1.0-beta.1
+npm create goalmatic@beta my-todo
 ```
 
-Until npm publication, run the local entry point with `node packages/cli/bin/goalmatic.mjs --help`. Use `create my-todos --local --type site --name my-todos` to generate a todo project without authentication. Connected setup signs in to Goalmatic and creates or links the remote project.
+For command help and project commands, use `npx goalmatic@beta --help`. Use `npx goalmatic@beta create my-todos --local --type site --name my-todos` to generate a todo project without authentication. Connected setup signs in to Goalmatic and creates or links the remote project.

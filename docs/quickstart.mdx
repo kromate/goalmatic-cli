@@ -4,16 +4,16 @@ description: Scaffold a Vue todo Site or App and connect it to Goalmatic.
 ---
 
 <Note>
-This is a prerelease. The npm packages and connected CLI API are awaiting
-publication. The checkout commands below work locally now.
+The CLI is in beta. The `beta` npm dist-tag may receive breaking changes between
+beta releases.
 </Note>
 
 ## Run the local todo
 
-Use Node.js 22.12 or later. From the developer tools checkout, run:
+Use Node.js 22.12 or later. Create a local Site with:
 
 ```bash
-node packages/cli/bin/goalmatic.mjs create my-todos --local --type site --name my-todos
+npx goalmatic@beta create my-todos --local --type site --name my-todos
 cd my-todos
 npm ci
 npm run dev
@@ -21,21 +21,21 @@ npm run dev
 
 The CLI prints the created directory. Open the URL printed by Vite. Add a task,
 mark it complete, switch between All, Open, and Done, then reload the page.
-Your Site stores its tasks in this browser.
+The local Site keeps its tasks in component memory and resets on refresh.
 
 For the App template, use `--type app` in a new directory. Its local page displays
-a Demo badge and explains that local tasks are browser data. A hosted App uses
-Goalmatic authentication and Tables. It never substitutes demo data for an
-unavailable account session.
+a Demo badge and resets tasks on refresh. A hosted App uses Goalmatic
+authentication and the declared `todos` Table. It never substitutes demo data for
+an unavailable account session.
 
 Local creation makes no Goalmatic API requests and creates no remote resources.
 
 ## Create a connected project
 
-After the connected API is deployed, omit `--local` and choose a new directory:
+To create a connected project, omit `--local` and choose a new directory:
 
 ```bash
-node packages/cli/bin/goalmatic.mjs create connected-todos --type app --name connected-todos
+npx goalmatic@beta create connected-todos --type app --name connected-todos
 ```
 
 1. Open the browser link printed by the CLI. Sign in or create your Goalmatic account.
@@ -52,18 +52,16 @@ Goalmatic server.
 To resume an interrupted creation, repeat the same command. The local setup
 receipt preserves the original request. Keep it while recovering setup.
 
-## Use the published packages
-
-After the first npm prerelease is available:
+## Use the beta packages
 
 ```bash
 npm create goalmatic@beta my-todos -- --local --type site --name my-todos
 ```
 
-For ongoing commands, use `npx goalmatic@0.1.0-beta.1` or install the CLI once:
+For ongoing commands, use `npx goalmatic@beta` or install the CLI once:
 
 ```bash
-npm install -g goalmatic@0.1.0-beta.1
+npm install -g goalmatic@beta
 ```
 
 ## Open an existing project

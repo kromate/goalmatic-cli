@@ -7,6 +7,6 @@ Create a preview from the pinned source with `goalmatic deploy --preview`. A Sit
 
 For a Site, publish the selected source revision with `goalmatic publish`.
 
-An App release has separate states: create an immutable private test build, assign it to the private test track, invite testers, submit the tested build for review, and promote the approved release. The current CLI creates the test build during `deploy --preview`; the private-track assignment and tester invitation remain platform actions until their public CLI commands are released. `publish --test-build-id <build-id>` submits the selected App release. It does not imply approval.
+An App release has separate states: create an immutable private test build, assign it to the private test track, invite testers, submit the tested build for review, and promote the approved release. The CLI creates the test build and assigns it to the private test track during `deploy --preview`. Use `--json` to read its `runtimeUrl` and `buildId`. Tester invitations remain platform actions. `publish --test-build-id <build-id>` submits the selected App release. It does not imply approval.
 
 Read status between stages with `goalmatic status --json`. After a command returns, verify the exact route, revision, or release ID. A cached response does not prove that production changed.

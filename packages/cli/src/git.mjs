@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { lstat, mkdir, realpath, writeFile } from 'node:fs/promises'
+import { chmod, lstat, mkdir, realpath, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve, sep } from 'node:path'
 import { apiRequest } from './api.mjs'
 import { loadCredential } from './auth.mjs'
@@ -38,6 +38,26 @@ export async function connectGithub({ origin, project, options, output, signal }
   const rl = promptSession()
   try {
     const siteId = project.config.projectId
+    let current = null
+    try {
+      current = await apiRequest({
+        origin,
+        token: credential.accessToken,
+        accountId: project.config.accountId,
+        path: `/api/sites/${encodeURIComponent(siteId)}/github/status`,
+        signal,
+      })
+    } catch (error) {
+      if (error?.status !== 404) throw error
+    }
+    if (current?.connected && current.binding?.sourceAuthority === 'git' && current.binding?.migration?.status === 'ready') {
+      validateBoundRepositoryChoice(current.binding, options)
+      const local = await attachConnectedBinding({ origin, credential, project, binding: current.binding, signal })
+      output.info(`Reused ${current.binding.owner}/${current.binding.repo}; Git source authority is already ready.`)
+      output.info(`Local branch ${local.branch} now tracks the fetched commit ${local.commitSha.slice(0, 12)}.`)
+      if (!local.clean) output.warn('The local checkout has uncommitted differences. Review and commit them before deploy or publish.')
+      return { ...current, local }
+    }
     const setup = await apiRequest({
       origin,
       token: credential.accessToken,
@@ -80,30 +100,19 @@ export async function connectGithub({ origin, project, options, output, signal }
     })
     const cloneUrl = result?.binding?.cloneUrl || repository.cloneUrl
     if (!cloneUrl) throw new CliError('GitHub connection succeeded, but no clone URL was returned')
-    const branches = await apiRequest({
-      origin,
-      token: credential.accessToken,
-      accountId: project.config.accountId,
-      path: `/api/sites/${encodeURIComponent(siteId)}/github/branches`,
-      signal,
-    })
-    const preview = branches?.branches?.find(branch => branch.name === previewBranch || branch.role === 'preview')
-    if (!preview?.headSha) throw new CliError('GitHub connection succeeded, but the preview branch is not ready')
-    const snapshot = await apiRequest({
-      origin,
-      token: credential.accessToken,
-      accountId: project.config.accountId,
-      path: `/api/sites/${encodeURIComponent(siteId)}/source`,
-      signal,
-    })
-    const local = await attachLocalRepository({
-      directory: project.directory,
+    const binding = {
+      ...result?.binding,
       cloneUrl,
-      owner: repository.owner,
-      repo: repository.name,
-      branch: preview.name,
-      expectedCommitSha: preview.headSha,
-      files: snapshot?.files || [],
+      owner: result?.binding?.owner || repository.owner,
+      repo: result?.binding?.repo || repository.name,
+      previewBranch: result?.binding?.previewBranch || previewBranch,
+    }
+    const local = await attachConnectedBinding({
+      origin,
+      credential,
+      project,
+      binding,
+      signal,
     })
     output.info(`Connected ${repository.fullName}. Goalmatic migrated source authority to Git.`)
     output.info(`Local branch ${local.branch} now tracks the fetched commit ${local.commitSha.slice(0, 12)}.`)
@@ -112,6 +121,39 @@ export async function connectGithub({ origin, project, options, output, signal }
   } finally {
     rl?.close()
   }
+}
+
+function validateBoundRepositoryChoice(binding, options) {
+  if (options.owner && options.owner !== binding.owner) {
+    throw new CliError(`This project is already bound to ${binding.owner}/${binding.repo}; refusing requested owner ${options.owner}.`, 2)
+  }
+  if (options.repo && options.repo !== binding.repo) {
+    throw new CliError(`This project is already bound to ${binding.owner}/${binding.repo}; refusing requested repository ${options.repo}.`, 2)
+  }
+}
+
+async function attachConnectedBinding({ origin, credential, project, binding, signal }) {
+  if (!binding?.owner || !binding?.repo || !binding?.cloneUrl) {
+    throw new CliError('The ready GitHub binding is missing repository identity')
+  }
+  const branches = await apiRequest({
+    origin,
+    token: credential.accessToken,
+    accountId: project.config.accountId,
+    path: `/api/sites/${encodeURIComponent(project.config.projectId)}/github/branches`,
+    signal,
+  })
+  const expectedPreview = binding.previewBranch || branches?.previewBranch
+  const preview = branches?.branches?.find(branch => branch.name === expectedPreview || branch.role === 'preview')
+  if (!preview?.headSha) throw new CliError('GitHub connection is ready, but the preview branch head is unavailable')
+  return attachLocalRepository({
+    directory: project.directory,
+    cloneUrl: binding.cloneUrl,
+    owner: binding.owner,
+    repo: binding.repo,
+    branch: preview.name,
+    expectedCommitSha: preview.headSha,
+  })
 }
 
 async function pollRepositories({ origin, credential, project, state, expiresAt, signal }) {
@@ -190,7 +232,7 @@ export async function inspectLocalGit(directory) {
   return { branch: branch.stdout.trim(), commitSha: commit.stdout.trim(), clean: status.stdout.trim() === '' }
 }
 
-async function attachLocalRepository({ directory, cloneUrl, owner, repo, branch, expectedCommitSha, files }) {
+async function attachLocalRepository({ directory, cloneUrl, owner, repo, branch, expectedCommitSha }) {
   const verifiedUrl = verifyGithubCloneUrl(cloneUrl, owner, repo)
   const localGit = await preflightLocalRepository(directory, verifiedUrl)
   if (!localGit) {
@@ -211,7 +253,7 @@ async function attachLocalRepository({ directory, cloneUrl, owner, repo, branch,
   if (localGit && (await runGit(directory, ['ls-files', '--stage'])).stdout.trim()) {
     throw new CliError('The existing repository has staged files. Commit or preserve that work before attaching remote history.')
   }
-  await materializeMissingFiles(directory, files)
+  await materializeMissingGitFiles(directory, fetched)
   await runGit(directory, ['symbolic-ref', 'HEAD', `refs/heads/${branch}`])
   await runGit(directory, ['reset', '--mixed', `refs/remotes/origin/${branch}`])
   await runGit(directory, ['branch', '--set-upstream-to', `origin/${branch}`, branch])
@@ -232,18 +274,48 @@ async function preflightLocalRepository(directory, verifiedUrl) {
   return localGit
 }
 
-async function materializeMissingFiles(directory, files) {
-  for (const file of files) {
-    if (!file || typeof file.path !== 'string' || typeof file.content !== 'string') throw new CliError('Goalmatic returned invalid source while attaching Git')
-    const destination = await safeProjectPath(directory, file.path)
-    const entry = await lstat(destination).catch(error => error?.code === 'ENOENT' ? null : Promise.reject(error))
-    if (entry) {
-      if (!entry.isFile()) throw new CliError(`Expected a regular project file: ${file.path}`)
+async function materializeMissingGitFiles(directory, commitSha) {
+  const tree = await runGitBuffer(directory, ['ls-tree', '-rz', '--full-tree', commitSha])
+  const planned = []
+  for (const entry of parseGitTree(tree.stdout)) {
+    if (entry.type !== 'blob' || !['100644', '100755'].includes(entry.mode)) {
+      throw new CliError(`Refusing non-regular Git tree entry: ${entry.path}`)
+    }
+    const destination = await safeProjectPath(directory, entry.path)
+    const existing = await lstat(destination).catch(error => error?.code === 'ENOENT' ? null : Promise.reject(error))
+    if (existing) {
+      if (!existing.isFile()) throw new CliError(`Expected a regular project file: ${entry.path}`)
       continue
     }
-    await mkdir(dirname(destination), { recursive: true })
-    await writeFile(destination, file.content, { flag: 'wx' })
+    planned.push({ ...entry, destination })
   }
+  for (const entry of planned) {
+    const blob = await runGitBuffer(directory, ['cat-file', 'blob', entry.object])
+    await mkdir(dirname(entry.destination), { recursive: true })
+    await writeFile(entry.destination, blob.stdout, { flag: 'wx', mode: entry.mode === '100755' ? 0o755 : 0o644 })
+    if (entry.mode === '100755') await chmod(entry.destination, 0o755)
+  }
+}
+
+function parseGitTree(buffer) {
+  const entries = []
+  let start = 0
+  for (let index = 0; index <= buffer.length; index += 1) {
+    if (index !== buffer.length && buffer[index] !== 0) continue
+    if (index === start) break
+    const record = buffer.subarray(start, index)
+    const tab = record.indexOf(9)
+    if (tab === -1) throw new CliError('Git returned an invalid tree entry')
+    const metadata = record.subarray(0, tab).toString('ascii').split(' ')
+    if (metadata.length !== 3 || !/^[0-9a-f]{40,64}$/i.test(metadata[2])) throw new CliError('Git returned invalid tree metadata')
+    let path
+    try { path = new TextDecoder('utf-8', { fatal: true }).decode(record.subarray(tab + 1)) } catch {
+      throw new CliError('Git tree contains a path that is not valid UTF-8')
+    }
+    entries.push({ mode: metadata[0], type: metadata[1], object: metadata[2], path })
+    start = index + 1
+  }
+  return entries
 }
 
 function verifyGithubCloneUrl(value, owner, repo) {
@@ -300,6 +372,21 @@ function runGit(directory, args, { allowFailure = false } = {}) {
     child.once('error', error => reject(new CliError(`Could not run git: ${error.message}`)))
     child.once('exit', code => {
       if (code === 0 || allowFailure) resolve({ code, stdout, stderr })
+      else reject(new CliError(stderr.trim() || `git ${args[0]} failed`))
+    })
+  })
+}
+
+function runGitBuffer(directory, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('git', args, { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
+    const stdout = []
+    let stderr = ''
+    child.stdout.on('data', chunk => { stdout.push(chunk) })
+    child.stderr.on('data', chunk => { stderr += chunk })
+    child.once('error', error => reject(new CliError(`Could not run git: ${error.message}`)))
+    child.once('exit', code => {
+      if (code === 0) resolve({ stdout: Buffer.concat(stdout) })
       else reject(new CliError(stderr.trim() || `git ${args[0]} failed`))
     })
   })

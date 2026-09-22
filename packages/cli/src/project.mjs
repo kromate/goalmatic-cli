@@ -33,9 +33,14 @@ export async function selectAccount(me, requested, rl) {
   const accounts = Array.isArray(me?.accounts) ? me.accounts : []
   assert(accounts.length, 'Your user has no accessible Goalmatic accounts')
   if (requested) {
-    const match = accounts.find(account => account.id === requested || account.name === requested)
-    if (!match) throw new CliError(`Account not found: ${requested}`, 2)
-    return match
+    const idMatch = accounts.find(account => account.id === requested)
+    if (idMatch) return idMatch
+    const nameMatches = accounts.filter(account => account.name === requested)
+    if (nameMatches.length > 1) {
+      throw new CliError(`Account name is ambiguous: ${requested}. Use an account ID instead.`, 2)
+    }
+    if (!nameMatches.length) throw new CliError(`Account not found: ${requested}`, 2)
+    return nameMatches[0]
   }
   if (accounts.length === 1) return accounts[0]
   return choose(rl, 'Choose an account', accounts, {

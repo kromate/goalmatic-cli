@@ -1,4 +1,4 @@
-export const VERSION = '0.1.0-beta.1'
+export const VERSION = '0.1.0-beta.2'
 export const DEFAULT_API_ORIGIN = 'https://goalmatic.site'
 export const CONFIG_FILE = 'goalmatic.json'
 export const SETUP_RECEIPT = '.goalmatic/local/setup.json'

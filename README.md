@@ -3,19 +3,18 @@
 Create Vue Sites and authenticated Apps, connect a GitHub repository, and manage
 previews and releases from your terminal. Both starters contain a todo example.
 
-This checkout is the source for `goalmatic` and `create-goalmatic`. The initial
-release is being verified. A package declaration does not mean the package or its
-server endpoints have been published.
+This checkout is the source for `goalmatic` and `create-goalmatic`. The public beta
+uses the `beta` npm dist-tag. The CLI and its Goalmatic API remain beta software.
 
-## Use the local checkout
+## Get started
 
 Use Node.js 22.12 or later.
 
 ```sh
-node packages/cli/bin/goalmatic.mjs --help
+npx goalmatic@beta --help
 ```
 
-The public installation command, after npm publication, is:
+The public installation command is:
 
 ```sh
 npm create goalmatic@beta my-todo
@@ -26,7 +25,8 @@ link a project, and connect a GitHub repository. Credentials stay in the local u
 configuration directory. Each project records its own account and project IDs.
 
 An App uses Goalmatic authentication and Tables when hosted. Local App development
-uses a labeled demo. A public Site keeps each visitor's todo list in their browser.
+uses a labeled Demo whose tasks reset on refresh. The Site starter also keeps
+tasks in page memory and resets on refresh, both locally and when hosted.
 
 ## Work on the packages
 
@@ -39,8 +39,9 @@ not need a compilation step. The bundled todo is ordinary Vue and Vite source.
 ## Publish documentation without a subscription
 
 Connect the `docs` directory of the source repository to Mintlify's free Starter
-plan. Keep the provided Mintlify URL to avoid buying a domain. Do not start a paid
-trial, upgrade a plan, or enable metered AI features for this project.
+plan at [goalmatic.mintlify.site](https://goalmatic.mintlify.site). Keep the
+provided Mintlify URL to avoid buying a domain. Do not start a paid trial, upgrade
+a plan, or enable metered AI features for this project.
 
 The CLI and todo use no paid generation services. Goalmatic accounts remain
 subject to the platform's existing hosting and data limits. Public npm package
@@ -48,6 +49,6 @@ publication does not require a paid private-package plan.
 
 ## Release status
 
-See [the release guide](docs/contributing-and-releasing.mdx) for publication requirements.
-Publishing a Site, creating an App test build, submitting an App release, publishing
-an npm package, and deploying these docs are separate operations.
+Read the [release guide](docs/contributing-and-releasing.mdx) for beta publication
+requirements. Publishing a Site, creating an App test build, submitting an App
+release, publishing an npm package, and deploying these docs are separate operations.

@@ -5,8 +5,9 @@ import { mkdtemp, mkdir, readFile, realpath, symlink, writeFile } from 'node:fs/
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { loadCredential } from '../src/auth.mjs'
+import { selectAccount } from '../src/project.mjs'
 import { scaffoldProject } from '../src/scaffold.mjs'
 import { safeProjectPath } from '../src/source-files.mjs'
 
@@ -50,6 +51,17 @@ test('environment token is bound to GOALMATIC_API_URL', { concurrency: false }, 
   }
 })
 
+test('requested duplicate account names require an account ID', async () => {
+  const me = {
+    accounts: [
+      { id: 'acct_one', name: 'Shared' },
+      { id: 'acct_two', name: 'Shared' },
+    ],
+  }
+  await assert.rejects(selectAccount(me, 'Shared', null), /ambiguous.*account ID/i)
+  assert.equal((await selectAccount(me, 'acct_two', null)).id, 'acct_two')
+})
+
 test('simulated protocol create retries one interrupted POST with the same receipt and idempotency key', async () => {
   const root = await tempDirectory()
   const directory = join(root, 'retry-site')
@@ -87,6 +99,41 @@ test('simulated protocol create retries one interrupted POST with the same recei
   assert.equal(posts[1].headers.authorization, 'Bearer gmc_simulated')
   assert.equal(posts[1].headers['x-goalmatic-account-id'], 'acct_one')
   assert.deepEqual(posts[0].body.files, posts[1].body.files)
+})
+
+test('simulated create does not accept connected Git status without ready authority and local checkout', async () => {
+  const root = await tempDirectory()
+  const directory = join(root, 'resume-git')
+  let setupRequests = 0
+  await withFakeApi(async ({ request, response, body }) => {
+    if (request.url === '/api/cli/v1/me') return json(response, 200, singleAccount())
+    if (request.url === '/api/cli/v1/projects' && request.method === 'POST') {
+      return json(response, 200, {
+        ...createdProject(body, request.headers.host, body.files),
+        project: { id: 'site_resume', name: body.name, type: body.type, accountId: body.accountId },
+        files: body.files.map(file => file.path === 'goalmatic.json'
+          ? { ...file, content: `${JSON.stringify({ ...JSON.parse(file.content), accountId: 'acct_one', projectId: 'site_resume', apiOrigin: `http://${request.headers.host}` }, null, 2)}\n` }
+          : file),
+      })
+    }
+    if (request.url === '/api/sites/site_resume/github/status') {
+      return json(response, 200, {
+        connected: true,
+        githubHeadSha: 'a'.repeat(40),
+        binding: { owner: 'example', repo: 'selected', sourceAuthority: 'site-builder', migration: { status: 'legacy' } },
+      })
+    }
+    if (request.url === '/api/sites/site_resume/github/setup') {
+      setupRequests += 1
+      return json(response, 503, { message: 'simulated retry reached GitHub setup' })
+    }
+    return json(response, 404, { message: 'simulated route not found' })
+  }, async origin => {
+    const result = await runCli(['create', directory, '--type', 'site', '--name', 'resume-git', '--yes', '--api-url', origin], origin)
+    assert.notEqual(result.code, 0)
+    assert.match(result.stderr, /simulated retry reached GitHub setup/)
+  })
+  assert.equal(setupRequests, 1)
 })
 
 test('simulated protocol refuses an ambiguous account in a non-interactive create', async () => {
@@ -174,6 +221,119 @@ test('simulated Git connect rejects a mismatched existing origin without changin
   assert.equal((await run('git', ['remote', 'get-url', 'origin'], { cwd: projectDirectory })).stdout.trim(), 'https://github.com/example/different.git')
 })
 
+test('simulated fresh Git attachment restores every missing regular file from the verified fetched tree', async () => {
+  const root = await tempDirectory()
+  const fixture = await createGitFixture(root)
+  const projectDirectory = join(root, 'fresh-project')
+  await mkdir(projectDirectory)
+  await writeFile(join(projectDirectory, 'goalmatic.json'), fixture.localConfig)
+  await writeFile(join(projectDirectory, 'existing.txt'), 'keep this local edit\n')
+
+  await withFakeApi(async ({ request, response }) => {
+    if (request.url === '/api/sites/site_fresh/github/setup') return json(response, 200, { mode: 'ready', state: 'state_12345678', expiresAt: new Date(Date.now() + 60_000).toISOString() })
+    if (request.url?.startsWith('/api/sites/site_fresh/github/repositories?')) {
+      return json(response, 200, { owners: [], repositories: [{ installationId: 7, owner: 'example', name: 'selected', fullName: 'example/selected', defaultBranch: 'main', cloneUrl: 'https://github.com/example/selected.git', selectable: true }] })
+    }
+    if (request.url === '/api/sites/site_fresh/github/connect') {
+      return json(response, 200, { connected: true, binding: { cloneUrl: 'https://github.com/example/selected.git' } })
+    }
+    if (request.url === '/api/sites/site_fresh/github/branches') {
+      return json(response, 200, { productionBranch: 'main', previewBranch: 'preview', branches: [{ name: 'preview', role: 'preview', headSha: fixture.commitSha }] })
+    }
+    if (request.url === '/api/sites/site_fresh/source') return json(response, 500, { message: 'Git attachment must not depend on the source snapshot' })
+    return json(response, 404, { message: 'simulated route not found' })
+  }, async origin => {
+    const rewriteKey = `url.${pathToFileURL(fixture.bareRepository).toString()}.insteadOf`
+    const result = await runCli(
+      ['git', 'connect', '--owner', 'example', '--repo', 'selected', '--yes', '--api-url', origin],
+      origin,
+      {
+        cwd: projectDirectory,
+        env: {
+          GIT_CONFIG_COUNT: '2',
+          GIT_CONFIG_KEY_0: rewriteKey,
+          GIT_CONFIG_VALUE_0: 'https://github.com/example/selected.git',
+          GIT_CONFIG_KEY_1: 'protocol.file.allow',
+          GIT_CONFIG_VALUE_1: 'always',
+        },
+      },
+    )
+    assert.equal(result.code, 0, result.stderr)
+  })
+
+  assert.equal(await readFile(join(projectDirectory, 'README.md'), 'utf8'), '# Remote project\n')
+  assert.equal(await readFile(join(projectDirectory, 'CONTRIBUTING.md'), 'utf8'), 'Contribute safely.\n')
+  assert.equal(await readFile(join(projectDirectory, '.goalmatic/source.json'), 'utf8'), '{"authority":"git"}\n')
+  assert.deepEqual(await readFile(join(projectDirectory, 'public/binary.bin')), Buffer.from([0, 255, 1, 128, 10]))
+  assert.equal(await readFile(join(projectDirectory, 'existing.txt'), 'utf8'), 'keep this local edit\n')
+  const status = (await run('git', ['status', '--porcelain'], { cwd: projectDirectory })).stdout
+  assert.doesNotMatch(status, /^ D /m)
+  assert.match(status, /existing\.txt/)
+})
+
+test('simulated ready binding recovery attaches locally without rerunning GitHub setup or migration', async () => {
+  const root = await tempDirectory()
+  const fixture = await createGitFixture(root)
+  const directory = join(root, 'ready-recovery')
+  const mutations = { setup: 0, repositories: 0, connect: 0 }
+
+  await withFakeApi(async ({ request, response, body }) => {
+    if (request.url === '/api/cli/v1/me') return json(response, 200, singleAccount())
+    if (request.url === '/api/cli/v1/projects' && request.method === 'POST') {
+      const files = body.files.map(file => file.path === 'goalmatic.json'
+        ? { ...file, content: `${JSON.stringify({ ...JSON.parse(file.content), accountId: 'acct_one', projectId: 'site_ready', apiOrigin: `http://${request.headers.host}` }, null, 2)}\n` }
+        : file)
+      return json(response, 200, {
+        project: { id: 'site_ready', name: body.name, type: body.type, accountId: body.accountId },
+        sourceVersionId: 'version_ready',
+        files,
+      })
+    }
+    if (request.url === '/api/sites/site_ready/github/status') {
+      return json(response, 200, {
+        connected: true,
+        githubHeadSha: fixture.commitSha,
+        binding: {
+          owner: 'example',
+          repo: 'selected',
+          cloneUrl: 'https://github.com/example/selected.git',
+          previewBranch: 'preview',
+          activeBranch: 'preview',
+          sourceAuthority: 'git',
+          migration: { status: 'ready', previewCommitSha: fixture.commitSha },
+        },
+      })
+    }
+    if (request.url === '/api/sites/site_ready/github/branches') {
+      return json(response, 200, { previewBranch: 'preview', branches: [{ name: 'preview', role: 'preview', headSha: fixture.commitSha }] })
+    }
+    if (request.url === '/api/sites/site_ready/github/setup') mutations.setup += 1
+    if (request.url === '/api/sites/site_ready/github/repositories') mutations.repositories += 1
+    if (request.url === '/api/sites/site_ready/github/connect') mutations.connect += 1
+    return json(response, 500, { message: 'ready binding attempted a forbidden setup or migration request' })
+  }, async origin => {
+    const result = await runCli(
+      ['create', directory, '--type', 'site', '--name', 'ready-recovery', '--owner', 'example', '--repo', 'selected', '--yes', '--api-url', origin],
+      origin,
+      {
+        env: {
+          GIT_CONFIG_COUNT: '2',
+          GIT_CONFIG_KEY_0: `url.${pathToFileURL(fixture.bareRepository).toString()}.insteadOf`,
+          GIT_CONFIG_VALUE_0: 'https://github.com/example/selected.git',
+          GIT_CONFIG_KEY_1: 'protocol.file.allow',
+          GIT_CONFIG_VALUE_1: 'always',
+        },
+      },
+    )
+    assert.equal(result.code, 0, result.stderr)
+  })
+
+  assert.deepEqual(mutations, { setup: 0, repositories: 0, connect: 0 })
+  assert.equal((await run('git', ['rev-parse', 'HEAD'], { cwd: directory })).stdout.trim(), fixture.commitSha)
+  assert.equal(await readFile(join(directory, 'README.md'), 'utf8'), '# Remote project\n')
+  assert.deepEqual(await readFile(join(directory, 'public/binary.bin')), Buffer.from([0, 255, 1, 128, 10]))
+})
+
 function singleAccount() {
   return {
     user: { id: 'user_1', email: 'user@example.test' },
@@ -226,10 +386,10 @@ function json(response, status, value) {
   response.end(JSON.stringify(value))
 }
 
-function runCli(args, apiOrigin, { cwd = packageDirectory } = {}) {
+function runCli(args, apiOrigin, { cwd = packageDirectory, env = {} } = {}) {
   return run(process.execPath, [cli, ...args], {
     cwd,
-    env: { ...process.env, GOALMATIC_TOKEN: 'gmc_simulated', GOALMATIC_API_URL: apiOrigin, NO_COLOR: '1' },
+    env: { ...process.env, GOALMATIC_TOKEN: 'gmc_simulated', GOALMATIC_API_URL: apiOrigin, NO_COLOR: '1', ...env },
   })
 }
 
@@ -247,6 +407,28 @@ function run(command, args, { cwd, env = process.env } = {}) {
 
 async function tempDirectory() {
   return realpath(await mkdtemp(join(tmpdir(), 'goalmatic-cli-test-')))
+}
+
+async function createGitFixture(root) {
+  const work = join(root, 'remote-work')
+  const bareRepository = join(root, 'selected.git')
+  await mkdir(join(work, '.goalmatic'), { recursive: true })
+  await mkdir(join(work, 'public'), { recursive: true })
+  const remoteConfig = `${JSON.stringify({ schemaVersion: 1, name: 'fresh-project', type: 'site', framework: 'vue', accountId: 'acct_one', projectId: 'site_fresh' }, null, 2)}\n`
+  await writeFile(join(work, 'goalmatic.json'), remoteConfig)
+  await writeFile(join(work, 'README.md'), '# Remote project\n')
+  await writeFile(join(work, 'CONTRIBUTING.md'), 'Contribute safely.\n')
+  await writeFile(join(work, '.goalmatic/source.json'), '{"authority":"git"}\n')
+  await writeFile(join(work, 'public/binary.bin'), Buffer.from([0, 255, 1, 128, 10]))
+  await writeFile(join(work, 'existing.txt'), 'remote version\n')
+  await run('git', ['init', '-b', 'preview'], { cwd: work })
+  await run('git', ['config', 'user.email', 'cli-test@example.test'], { cwd: work })
+  await run('git', ['config', 'user.name', 'CLI Test'], { cwd: work })
+  await run('git', ['add', '.'], { cwd: work })
+  await run('git', ['commit', '-m', 'verified tree'], { cwd: work })
+  const commitSha = (await run('git', ['rev-parse', 'HEAD'], { cwd: work })).stdout.trim()
+  await run('git', ['clone', '--bare', work, bareRepository], { cwd: root })
+  return { bareRepository, commitSha, localConfig: remoteConfig }
 }
 
 function pickEnvironment(keys) {

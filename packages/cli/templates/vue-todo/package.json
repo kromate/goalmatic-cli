@@ -8,11 +8,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "goalmatic:deploy": "npx goalmatic@0.1.0-beta.1 deploy --preview",
-    "goalmatic:publish": "npx goalmatic@0.1.0-beta.1 publish"
+    "goalmatic:deploy": "npx goalmatic@0.1.0-beta.2 deploy --preview",
+    "goalmatic:publish": "npx goalmatic@0.1.0-beta.2 publish"
   },
   "dependencies": {
-    "vue": "3.5.41"
+    "vue": "3.5.41",
+    "vue-router": "4.6.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.8",

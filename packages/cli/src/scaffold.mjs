@@ -5,8 +5,9 @@ import { fileURLToPath } from 'node:url'
 const TEMPLATE_DIRECTORY = resolve(dirname(fileURLToPath(import.meta.url)), '../templates/vue-todo')
 const TEMPLATE_FILES = [
   '.gitignore',
+  'App.vue',
   'index.html',
-  'index.vue',
+  'pages/index.vue',
   'main.js',
   'vite.config.mjs',
   'package.json',

@@ -3,7 +3,7 @@ import { authenticatedContext, loadCredential, login, logout } from './auth.mjs'
 import { HELP, VERSION } from './constants.mjs'
 import { CliError } from './errors.mjs'
 import { requireProjectConfig } from './fs-state.mjs'
-import { connectGithub, githubStatus } from './git.mjs'
+import { connectGithub, githubStatus, inspectLocalGit } from './git.mjs'
 import { parseOptions } from './options.mjs'
 import { createOutput } from './output.mjs'
 import { createProjectFlow, linkProjectFlow, listProjects, selectAccount } from './project.mjs'
@@ -123,18 +123,30 @@ export async function main(argv = [], runtime = {}) {
 async function maybeConnectAfterCreate({ origin, result, options, output, signal }) {
   if (result.local) return null
   const project = await requireProjectConfig(result.directory)
+  let existing = null
   try {
-    const existing = await githubStatus({ origin, project, signal })
-    if (existing.connected) {
+    existing = await githubStatus({ origin, project, signal })
+    const binding = existing.binding
+    const expectedBranch = binding?.activeBranch || binding?.previewBranch || binding?.branch
+    const expectedCommit = existing.githubHeadSha || binding?.migration?.previewCommitSha
+    const local = binding?.sourceAuthority === 'git' && binding?.migration?.status === 'ready'
+      ? await inspectLocalGit(project.directory)
+      : null
+    if (existing.connected && binding?.sourceAuthority === 'git' && binding?.migration?.status === 'ready'
+      && local && expectedBranch && expectedCommit
+      && local.branch === expectedBranch && local.commitSha === expectedCommit) {
       output.info('GitHub source authority is already connected.')
-      return existing
+      return { ...existing, local }
     }
   } catch (error) {
     if (error?.status !== 404) throw error
   }
+  const resumedOptions = existing?.binding?.owner && existing?.binding?.repo
+    ? { ...options, owner: existing.binding.owner, repo: existing.binding.repo }
+    : options
   let shouldConnect = false
-  if (options.yes) {
-    shouldConnect = Boolean(options.owner && options.repo)
+  if (resumedOptions.yes) {
+    shouldConnect = Boolean(resumedOptions.owner && resumedOptions.repo)
     if (!shouldConnect) output.warn('Skipped GitHub setup: --yes requires explicit --owner and --repo.')
   } else {
     const rl = promptSession()
@@ -143,7 +155,7 @@ async function maybeConnectAfterCreate({ origin, result, options, output, signal
     } finally { rl?.close() }
     if (!rl) output.warn('Skipped GitHub setup in a non-interactive terminal. Run `goalmatic git connect`.')
   }
-  return shouldConnect ? connectGithub({ origin, project, options, output, signal }) : null
+  return shouldConnect ? connectGithub({ origin, project, options: resumedOptions, output, signal }) : null
 }
 
 export async function runCreate(argv = []) {

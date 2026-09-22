@@ -3,8 +3,12 @@ title: Sites and Apps
 description: Choose the runtime and data model that fit your product.
 ---
 
-A Site is a public web project. The Vue todo starter keeps local records in `localStorage` in Demo mode. Create one with `goalmatic create my-site --type site --name "My site"`.
+A Site is a public web project. The Vue todo starter keeps tasks in page memory and resets them on refresh, both locally and when hosted. Create one with `npx goalmatic@beta create my-site --type site --name "My site"`.
 
-An App is an authenticated product. The starter declares a private `todos` Table in `.goalmatic/app.json`. Goalmatic owns identity, account scope, resource bindings, review, installation, and App releases. Create one with `goalmatic create my-app --type app --name "My app"`.
+An App is an authenticated product. The starter declares a private `todos` Table in `.goalmatic/app.json`. Goalmatic owns identity, account scope, resource bindings, review, installation, and App releases. Create one with `npx goalmatic@beta create my-app --type app --name "My app"`.
 
-The local demo is explicit. A hosted App requires a working Goalmatic runtime and account-scoped data. It does not silently replace a failed hosted request with sample data. A configured App that cannot initialize the runtime shows the error and stops.
+The local App Demo is explicit and resets on refresh. A hosted App requires a working Goalmatic runtime and account-scoped Table data. It does not silently replace a failed hosted request with sample data. A configured App that cannot initialize the runtime shows the error and stops.
+
+The canonical starter shell is `App.vue`. The todo route is `pages/index.vue`, and
+`main.js` installs the Vue Router and mounts the shell. Tasks stay in the page component for Sites and the local App Demo.
+The hosted App connects the same controls to Goalmatic Tables.

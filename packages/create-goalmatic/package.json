@@ -1,6 +1,6 @@
 {
   "name": "create-goalmatic",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Create a Goalmatic Site or App",
   "type": "module",
   "license": "MIT",
@@ -15,7 +15,7 @@
     "README.md"
   ],
   "dependencies": {
-    "goalmatic": "0.1.0-beta.1"
+    "goalmatic": "0.1.0-beta.2"
   },
   "publishConfig": {
     "access": "public"
