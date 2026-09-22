@@ -5,7 +5,14 @@ description: Move a project through preview, testing, review, and production.
 
 Create a preview from the pinned source with `goalmatic deploy --preview`. A Site command creates a preview deployment. An App command creates an immutable private test build and prints its build status.
 
-For a Site, publish the selected source revision with `goalmatic publish`.
+For a Site, choose a production hostname once in the project's **Domains** settings.
+Select **Use build domain** for a free `your-name.goalmatic.site` address, then
+connect it. Domain setup currently happens in the dashboard.
+
+Publish the selected source revision with `goalmatic publish`. Publishing saves
+the production revision; it becomes reachable at the connected hostname. If no
+domain is connected, the preview URL still works, but there is no public
+production hostname yet.
 
 An App release has separate states: create an immutable private test build, assign it to the private test track, invite testers, submit the tested build for review, and promote the approved release. The CLI creates the test build and assigns it to the private test track during `deploy --preview`. Use `--json` to read its `runtimeUrl` and `buildId`. Tester invitations remain platform actions. `publish --test-build-id <build-id>` submits the selected App release. It does not imply approval.
 
