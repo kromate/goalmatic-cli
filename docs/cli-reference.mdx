@@ -1,0 +1,25 @@
+---
+title: CLI reference
+description: Commands and options in the prerelease CLI.
+---
+
+Run `goalmatic --help` for the installed version.
+
+| Command | Purpose |
+| --- | --- |
+| `login` | Start browser device login. |
+| `logout` | Revoke and remove the saved credential. |
+| `whoami` | Show the signed-in user. |
+| `accounts` | List accessible accounts. |
+| `projects` | List projects in an account. |
+| `create [directory]` | Create a Vue Site or App and its remote Goalmatic project. |
+| `create [directory] --local --type site --name NAME` | Create an offline todo starter without authentication or a remote project. |
+| `link <project-id> [directory]` | Download a project into an empty directory. |
+| `git connect` | Connect the project to GitHub. |
+| `git status` | Show GitHub source status. |
+| `status` | Show project and deployment state. |
+| `dev` | Run the project’s npm dev script. |
+| `deploy --preview` | Create a preview deployment. |
+| `publish` | Publish a Site or submit an App release. |
+
+Global options include `--api-url <origin>`, `--account <account-id>`, `--project <project-id>`, `--json`, `--yes`, `--help`, and `--version` where supported. Project options include `--name`, `--type site|app`, `--owner`, `--repo`, `--production-branch`, `--preview-branch`, `--version-id`, and `--test-build-id`. `deploy` requires `--preview`. `git connect --owner <owner> --repo <repo>` is the non-interactive GitHub form, and repository creation also requires `--yes`.

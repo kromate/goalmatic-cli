@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 3,
+  "contractVersion": "2.0.0",
+  "packageId": "__GOALMATIC_PACKAGE_ID__",
+  "siteId": "__GOALMATIC_SITE_ID__",
+  "slug": "{{PROJECT_SLUG}}",
+  "name": "{{PROJECT_NAME}}",
+  "shortDescription": "A focused private task list for the work in front of you.",
+  "description": "{{PROJECT_NAME}} is a private, account-scoped todo list backed by Goalmatic Tables.",
+  "category": "productivity",
+  "version": "0.1.0",
+  "releaseType": "minor",
+  "releaseNotes": "Initial todo App release",
+  "sourceVersionId": "__LATEST_SAVED_VERSION__",
+  "entrypoint": "/",
+  "accent": "#2e6b5d",
+  "screenshots": [],
+  "visibility": "private",
+  "allowFork": false,
+  "publisher": {
+    "accountId": "__GOALMATIC_ACCOUNT_ID__",
+    "subjectId": "__GOALMATIC_ACCOUNT_ID__",
+    "displayName": "Goalmatic creator"
+  },
+  "seo": {
+    "title": "{{PROJECT_NAME}}",
+    "description": "A private todo list for your Goalmatic account."
+  },
+  "privacyPolicyUrl": "https://goalmatic.io/privacy",
+  "supportUrl": "https://goalmatic.io/support",
+  "externalDomains": [],
+  "capabilities": [
+    {
+      "id": "tables",
+      "kind": "tables",
+      "displayName": "Store private tasks",
+      "description": "Creates and manages private todo records for the signed-in Goalmatic account.",
+      "operations": [
+        "tables.records-list",
+        "tables.record-create",
+        "tables.record-update",
+        "tables.record-delete"
+      ],
+      "required": true,
+      "logicalResourceId": "todos",
+      "existingResourceAllowed": false
+    }
+  ],
+  "resources": {
+    "tables": [
+      {
+        "id": "todos",
+        "name": "Todos",
+        "description": "Private todo records for one installed account.",
+        "fields": [
+          { "id": "title", "name": "Title", "type": "text", "required": true },
+          { "id": "completed", "name": "Completed", "type": "boolean", "required": true }
+        ]
+      }
+    ],
+    "agents": [],
+    "workflows": [],
+    "tools": [],
+    "nodes": []
+  },
+  "updatePolicy": { "automaticWithoutNewCapabilities": true },
+  "uninstallPolicy": { "retainDataDays": 30, "exposeTablesAfterUninstall": true }
+}

@@ -1,0 +1,18 @@
+---
+title: Sign in and choose an account
+description: Use browser login locally and a token in CI.
+---
+
+Run `goalmatic login`. The CLI opens a Goalmatic browser page and prints a short code. Check that the browser shows the same code, approve the request, and return to the terminal.
+
+The CLI stores a revocable token at `~/.config/goalmatic/credentials.json` with mode `0600`. It stores no password or browser cookie. Run `goalmatic logout` to revoke the token and remove the local file.
+
+Use `goalmatic whoami`, `goalmatic accounts`, and `goalmatic projects --account <account-id>` to inspect access. `projects` accepts an account ID or account name and prompts when more than one account is available.
+
+The CLI stores the selected `accountId` for each project in `goalmatic.json`. Set `GOALMATIC_TOKEN` in CI. The CLI reads it for the process and never writes it to the credentials file.
+
+```bash
+GOALMATIC_TOKEN="$GOALMATIC_TOKEN" goalmatic status --json
+```
+
+Use `--api-url <origin>` when working against another trusted origin. Saved credentials must belong to that same origin.

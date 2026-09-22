@@ -1,0 +1,34 @@
+{
+  "name": "goalmatic",
+  "version": "0.1.0-beta.1",
+  "description": "Create, connect, and release Goalmatic Sites and Apps",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "goalmatic": "./bin/goalmatic.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kromate/goalmatic-cli.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/kromate/goalmatic-cli/issues"
+  },
+  "homepage": "https://github.com/kromate/goalmatic-cli#readme"
+}

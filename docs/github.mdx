@@ -1,0 +1,22 @@
+---
+title: Connect GitHub
+description: Bind a project to a GitHub repository and inspect source state.
+---
+
+Run `goalmatic git connect` from a linked project. The CLI opens the Goalmatic GitHub setup page. Authorize the Goalmatic GitHub App, choose a repository, and return to the CLI.
+
+Run `goalmatic git status` to inspect the repository, branches, source authority, and current revision.
+
+For a new project, the CLI connects the generated folder to the chosen repository.
+It fetches the exact preview commit and preserves existing files. It does not
+commit, push, force-reset, or switch an existing checkout to a different branch.
+If local files differ, review and commit them using your normal Git workflow.
+
+Private repositories also require Git credentials on your machine. Your browser's
+Goalmatic connection does not configure Git's local credential helper. If fetching
+the repository fails for authentication, use GitHub CLI or Git Credential Manager
+to sign Git in, then repeat `goalmatic git connect` for the same repository.
+
+A GitHub connection makes Git the source authority. A push changes source. It does not publish a Site or release an App. Use `goalmatic deploy --preview` and then follow [deployment and release](/deploy-and-release).
+
+Keep secrets out of Git. The server scans source before it accepts an authority migration or source update.

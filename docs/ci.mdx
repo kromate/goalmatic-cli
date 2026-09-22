@@ -1,0 +1,18 @@
+---
+title: Use the CLI in CI
+description: Run checks with a CI token.
+---
+
+Store `GOALMATIC_TOKEN` in the CI secret manager and run `goalmatic whoami --json` or `goalmatic status --json`.
+
+Use a CLI session issued by `goalmatic login`. App web keys and Firebase tokens are
+different credentials. The session expires after 30 days and can be revoked with
+`goalmatic logout`. Dedicated long-lived CI credentials are not part of this beta.
+
+`GOALMATIC_TOKEN` is bound to `https://goalmatic.site` by default. For another API
+origin, explicitly set `GOALMATIC_API_URL` too. A repository's `apiOrigin` cannot
+redirect an environment token to another host.
+
+Use `--json` for machine-readable output. Pin the CLI version in the CI image or lockfile. Keep production publish behind the repository approval rule. A Git push, a preview, and an App release submission are separate events.
+
+Never commit credentials or put them in client-side environment files.

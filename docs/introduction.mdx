@@ -1,0 +1,16 @@
+---
+title: Goalmatic developer tools
+description: Create and ship a local Vue Site or App.
+---
+
+The Goalmatic CLI connects a local Vue project to a Goalmatic Site or App. It can create the starter and its remote project, sign you in, select an account, link an existing project into an empty directory, connect GitHub, and send a preview or release request.
+
+The CLI is prerelease. The package and its service endpoints are still being released. These pages describe the intended public contract and local checkout commands until that release is complete.
+
+Use a **Site** for public pages and simple forms. Use an **App** for a signed-in product that uses Goalmatic Tables, workflows, integrations, or account data. Both start from the Vue todo project. The Site uses browser storage locally. The App uses the Goalmatic runtime and declares its `todos` Table.
+
+```bash
+npm install -g goalmatic@0.1.0-beta.1
+```
+
+Until npm publication, run the local entry point with `node packages/cli/bin/goalmatic.mjs --help`. The local checkout currently supports the connected create flow. The offline `--local` scaffold is being added and is not part of the released command contract yet.

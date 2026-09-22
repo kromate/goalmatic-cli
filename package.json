@@ -1,0 +1,17 @@
+{
+  "name": "goalmatic-developer-tools",
+  "private": true,
+  "version": "0.1.0-beta.1",
+  "type": "module",
+  "description": "Goalmatic CLI, Vue todo starter, and developer documentation",
+  "workspaces": ["packages/cli", "packages/create-goalmatic"],
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "test": "node --test",
+    "cli": "node packages/cli/bin/goalmatic.mjs",
+    "pack:cli": "npm pack --workspace=goalmatic --ignore-scripts",
+    "pack:create": "npm pack --workspace=create-goalmatic --ignore-scripts",
+    "pack:inspect": "npm pack --workspace=goalmatic --workspace=create-goalmatic --dry-run --ignore-scripts"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Goalmatic developer tools",
+  "description": "Create, connect, and release Goalmatic Sites and Apps.",
+  "logo": { "light": "/logo.svg", "dark": "/logo.svg", "href": "https://goalmatic.site" },
+  "colors": { "primary": "#6d28d9", "light": "#8b5cf6", "dark": "#4c1d95" },
+  "navigation": {
+    "anchors": [
+      { "anchor": "Start here", "icon": "rocket", "groups": [
+        { "group": "Build", "pages": ["introduction", "quickstart", "accounts-and-login", "sites-and-apps"] },
+        { "group": "Connect", "pages": ["github", "configuration"] }
+      ] },
+      { "anchor": "Ship", "icon": "cloud-arrow-up", "groups": [
+        { "group": "Delivery", "pages": ["deploy-and-release", "cli-reference", "ci"] },
+        { "group": "Support", "pages": ["troubleshooting", "contributing-and-releasing", "cost-limits"] }
+      ] }
+    ]
+  }
+}

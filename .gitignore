@@ -1,0 +1,10 @@
+node_modules/
+*.tgz
+.env
+.env.*
+!.env.example
+.goalmatic/local/
+.audit/
+.mintlify/
+.DS_Store
+DELIVERY.md

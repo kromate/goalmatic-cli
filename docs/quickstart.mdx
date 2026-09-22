@@ -1,0 +1,80 @@
+---
+title: Create your first project
+description: Scaffold a Vue todo Site or App and connect it to Goalmatic.
+---
+
+<Note>
+This is a prerelease. The npm packages and connected CLI API are awaiting
+publication. The checkout commands below work locally now.
+</Note>
+
+## Run the local todo
+
+Use Node.js 22.12 or later. From the developer tools checkout, run:
+
+```bash
+node packages/cli/bin/goalmatic.mjs create my-todos --local --type site --name my-todos
+cd my-todos
+npm ci
+npm run dev
+```
+
+The CLI prints the created directory. Open the URL printed by Vite. Add a task,
+mark it complete, switch between All, Open, and Done, then reload the page.
+Your Site stores its tasks in this browser.
+
+For the App template, use `--type app` in a new directory. Its local page displays
+a Demo badge and explains that local tasks are browser data. A hosted App uses
+Goalmatic authentication and Tables. It never substitutes demo data for an
+unavailable account session.
+
+Local creation makes no Goalmatic API requests and creates no remote resources.
+
+## Create a connected project
+
+After the connected API is deployed, omit `--local` and choose a new directory:
+
+```bash
+node packages/cli/bin/goalmatic.mjs create connected-todos --type app --name connected-todos
+```
+
+1. Open the browser link printed by the CLI. Sign in or create your Goalmatic account.
+2. Check that the browser code matches your terminal. Approve the terminal request.
+3. Select the account that will own your project. The default account is labeled.
+4. Follow the GitHub connection prompt. Choose the exact owner and repository, or
+   create a repository under that owner.
+
+The result includes the project directory, editor URL, and source preview URL.
+`goalmatic.json` records the account, project, and API origin. The generated folder
+is connected to Git without replacing your files. GitHub credentials stay on the
+Goalmatic server.
+
+To resume an interrupted creation, repeat the same command. The local setup
+receipt preserves the original request. Keep it while recovering setup.
+
+## Use the published packages
+
+After the first npm prerelease is available:
+
+```bash
+npm create goalmatic@beta my-todos -- --local --type site --name my-todos
+```
+
+For ongoing commands, use `npx goalmatic@0.1.0-beta.1` or install the CLI once:
+
+```bash
+npm install -g goalmatic@0.1.0-beta.1
+```
+
+## Open an existing project
+
+Use an empty destination folder:
+
+```bash
+goalmatic link PROJECT_ID existing-todos --account ACCOUNT_ID
+```
+
+`link` downloads the selected project's existing source. It does not overwrite a
+non-empty directory or convert a local demo in place.
+
+Continue with [GitHub](/github) and [previews and releases](/deploy-and-release).

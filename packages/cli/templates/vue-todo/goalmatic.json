@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "type": "{{PROJECT_TYPE}}",
+  "name": "{{PROJECT_NAME}}",
+  "framework": "vue"
+}

@@ -1,0 +1,14 @@
+---
+title: Troubleshoot the CLI
+description: Fix common login, project, GitHub, and release failures.
+---
+
+If the CLI says you are not signed in, run `goalmatic login`. If the saved session belongs to another API origin, pass the matching `--api-url` or log in again.
+
+If a project is not linked, run `goalmatic accounts`, then `goalmatic projects --account <account-id>`, and then `goalmatic link <project-id>` from an empty directory.
+
+If GitHub setup fails, check `goalmatic git status`. Confirm that the Goalmatic GitHub App can access the selected repository and remove secrets before retrying source migration.
+
+If publish reports success but the old page remains, run `goalmatic status --json` and open the exact route in a fresh session. Check the revision or release ID before retrying.
+
+If CI cannot prompt, pass explicit account and project options where supported and set `GOALMATIC_TOKEN`.

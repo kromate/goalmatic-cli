@@ -1,0 +1,22 @@
+---
+title: Configure a project
+description: Keep project identity in the project directory.
+---
+
+The CLI reads `goalmatic.json` from the current directory or a parent directory:
+
+```json
+{
+  "schemaVersion": 1,
+  "type": "app",
+  "name": "My todos",
+  "framework": "vue",
+  "accountId": "account-id",
+  "projectId": "site-id",
+  "apiOrigin": "https://goalmatic.site"
+}
+```
+
+`type` is `site` or `app`. `framework` is `vue`. `accountId` identifies the selected Goalmatic account. `projectId` identifies the linked project. `apiOrigin` identifies the Goalmatic origin that owns the credential and project. The CLI uses `projectId` as the Site Builder `siteId`; it does not require a separate `siteId` field.
+
+The `.goalmatic/app.json` manifest belongs to an App. It declares the package, capabilities, resources, update policy, and uninstall policy. Do not put access tokens or provider secrets in the manifest.
