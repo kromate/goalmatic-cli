@@ -18,6 +18,7 @@ export async function main(argv = [], runtime = {}) {
   if (options.help || !positional.length || positional[0] === 'help') return output.result(options.json ? { help: HELP } : HELP)
 
   const command = positional[0]
+  validateCommandOptions(command, options)
   const abortController = new AbortController()
   const onInterrupt = () => abortController.abort()
   process.once('SIGINT', onInterrupt)
@@ -101,22 +102,32 @@ export async function main(argv = [], runtime = {}) {
       const result = await deployPreview({ origin, project, options, signal: abortController.signal })
       if ((result.deployment || result)?.status === 'failed') throw new CliError('Preview deployment failed. Run goalmatic status --json for details.')
       if (project.config.type === 'app') {
-        return output.result(options.json ? result : `Private test build ${result.buildId || result.id || ''} is ${result.status || 'created'}.`)
+        return output.result(options.json ? result : formatAppBuild(result))
       }
       return output.result(options.json ? result : formatDeployment(result.deployment || result))
     }
     if (command === 'publish') {
-      const result = await publishProject({ origin, project, options, signal: abortController.signal })
-      if ((result.deployment || result)?.status === 'failed') throw new CliError('Publication failed. Run goalmatic status --json for details.')
+      const result = await publishProject({ origin, project, options, output, signal: abortController.signal })
       if (project.config.type === 'app') {
-        const status = result.status || result.orchestrationStatus || 'submitted'
-        return output.result(options.json ? result : `App release ${result.releaseId || ''} was submitted. Current status: ${status}.`)
+        if (result.status === 'failed' || result.orchestrationStatus === 'failed') {
+          if (options.json) output.result(result)
+          throw new CliError('App publication failed. Run goalmatic status --json for the release and orchestration state.')
+        }
+        return output.result(options.json ? result : formatAppPublication(result))
       }
+      if ((result.deployment || result)?.status === 'failed') throw new CliError('Publication failed. Run goalmatic status --json for details.')
       return output.result(options.json ? result : formatPublication(result))
     }
     throw new CliError(`Unknown command: ${command}. Run goalmatic --help.`, 2)
   } finally {
     process.removeListener('SIGINT', onInterrupt)
+  }
+}
+
+function validateCommandOptions(command, options) {
+  const publicationOnly = ['from-preview', 'release-id', 'dry-run'].filter(option => options[option])
+  if (command !== 'publish' && publicationOnly.length) {
+    throw new CliError(`${publicationOnly.map(option => `--${option}`).join(', ')} can be used only with publish`, 2)
   }
 }
 
@@ -202,6 +213,39 @@ function formatStatus(status) {
   ]
   if (status.git) lines.push(`Git: ${status.git.connected ? status.git.syncState : 'not connected'}`)
   if (status.deployment) lines.push(`Deployment: ${status.deployment.status || 'unknown'}${status.deployment.url ? ` ${status.deployment.url}` : ''}`)
+  const history = status.app?.history
+  const release = history?.pendingRelease || history?.currentRelease || history?.stableRelease
+  if (release) lines.push(`App release: ${release.version || 'unknown'} (${release.releaseId}, ${release.status || 'unknown'})`)
+  const promotion = status.app?.publication?.promotion
+  if (promotion) lines.push(`App publication: ${promotion.status || 'unknown'} at ${promotion.stage || 'unknown'}${promotion.lastError ? ` — ${promotion.lastError}` : ''}`)
+  return lines.join('\n')
+}
+
+function formatAppBuild(result) {
+  return [
+    `Private test build ${result.buildId || result.id || ''} is ${result.status || 'created'}.`,
+    result.runtimeUrl ? `Runtime: ${result.runtimeUrl}` : null,
+    result.source?.commitSha ? `Source: ${result.source.branch || 'preview'}@${result.source.commitSha}` : null,
+  ].filter(Boolean).join('\n')
+}
+
+function formatAppPublication(result) {
+  if (result.dryRun) {
+    return `${result.planText || 'App publication plan unavailable.'}\n${result.note}`
+  }
+  const releaseStatus = result.status || result.releaseStatus || 'submitted'
+  const orchestrationStatus = result.orchestrationStatus || null
+  const lines = []
+  if (result.mode === 'tested-preview' && result.promotion?.productionCommitSha) {
+    lines.push(`Promoted tested source to ${result.promotion.productionBranch}@${result.promotion.productionCommitSha}.`)
+  }
+  lines.push(`App release ${result.releaseId || ''} status: ${releaseStatus}.`)
+  if (orchestrationStatus) lines.push(`Publication orchestration: ${orchestrationStatus} at ${result.orchestrationStage || 'unknown'}.`)
+  if (releaseStatus !== 'published' || (orchestrationStatus && orchestrationStatus !== 'complete')) {
+    lines.push('This release is not confirmed live. Run goalmatic status --json to follow review and publication.')
+  } else if (result.runtimeUrl) {
+    lines.push(`Live runtime: ${result.runtimeUrl}`)
+  }
   return lines.join('\n')
 }
 

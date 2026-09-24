@@ -17,6 +17,6 @@ Goalmatic connection does not configure Git's local credential helper. If fetchi
 the repository fails for authentication, use GitHub CLI or Git Credential Manager
 to sign Git in, then repeat `goalmatic git connect` for the same repository.
 
-A GitHub connection makes Git the source authority. A push changes source. It does not publish a Site or release an App. Use `goalmatic deploy --preview` and then follow [deployment and release](/deploy-and-release).
+A GitHub connection makes Git the source authority. A push changes source. It does not publish a Site or release an App. For an App, push the configured preview branch to `origin` and keep the local checkout on the clean imported preview branch while you review the test runtime. Then use `goalmatic publish --from-preview` to promote the exact tested tree to the configured `main` or `master` branch without merging or creating a new build. Follow [deployment and release](/deploy-and-release).
 
 Keep secrets out of Git. The server scans source before it accepts an authority migration or source update.

@@ -14,6 +14,33 @@ the production revision; it becomes reachable at the connected hostname. If no
 domain is connected, the preview URL still works, but there is no public
 production hostname yet.
 
-An App release has separate states: create an immutable private test build, assign it to the private test track, invite testers, submit the tested build for review, and promote the approved release. The CLI creates the test build and assigns it to the private test track during `deploy --preview`. Use `--json` to read its `runtimeUrl` and `buildId`. Tester invitations remain platform actions. `publish --test-build-id <build-id>` submits the selected App release. It does not imply approval.
+An App release has separate states. Push the configured preview branch to `origin`, create a private test build with `deploy --preview`, review its runtime, then promote the exact tested tree from that preview branch to the configured production branch with:
+
+```bash
+goalmatic publish --from-preview
+```
+
+The CLI reads the current ready tested build by default. Pass `--test-build-id <build-id>` to select one explicitly. The command reads the clean local preview checkout and exact preview head, then asks the server to validate the live host, tree, and baseline at submit time. The server promotes that tree without a merge or new build, then submits the same compiled artifact to Store review. The command does not switch your checkout or silently create a new build. Use `--dry-run` for a plan only. Use `--yes` for a non-interactive submit or JSON script.
+
+The tested build's manifest and the current supported Store listing contract
+provide the App's capabilities, visibility, and listing metadata. Promotion does
+not silently make a private App public, change capabilities, or bypass the first
+Store review.
+
+If review is required, the App is not live while review is pending. After approval, finish it with:
+
+```bash
+goalmatic publish --release-id <release-id>
+```
+
+This command finalizes the approved release. It does not bypass review. Tester invitations remain platform actions.
+
+The preview-to-Store path is:
+
+`git push origin preview` → `goalmatic deploy --preview` → review the test runtime → `goalmatic publish --from-preview` → review when required → `goalmatic publish --release-id` after approval.
+
+For the current production path, `goalmatic publish --test-build-id <build-id>` remains available when your clean local checkout already matches the configured production branch and commit.
 
 Read status between stages with `goalmatic status --json`. After a command returns, verify the exact route, revision, or release ID. A cached response does not prove that production changed.
+
+The new `--from-preview` and `--release-id` flags require a CLI release that exposes them. Verify `goalmatic --help` or inspect the local source before using them with the current npm beta.

@@ -45,5 +45,20 @@ a clean checkout whose branch and commit match Goalmatic's imported Git head.
 
 For Sites, `deploy --preview` creates a preview deployment and `publish`
 publishes the pinned revision. For Apps, `deploy --preview` creates a private
-test build. `publish` submits an immutable App release for review and prints
-the returned status; submission does not mean the release is live.
+test build. With a CLI release that exposes the preview promotion flags,
+`publish --from-preview --test-build-id BUILD_ID` checks the ready test build and
+the clean local preview head, promotes that exact tree to the configured
+production branch without a merge or new build, and submits the same compiled
+artifact for Store review. The CLI reads the current ready test build by default;
+pass `--test-build-id BUILD_ID` to select one explicitly. Add `--dry-run` for a
+plan-only read and `--yes` for a non-interactive submit. If review is required,
+submission does not mean the release is live. The tested manifest and supported Store listing contract still
+control capabilities, visibility, and listing metadata; promotion does not make a
+private App public or bypass its first review.
+
+After approval, finish the release with `publish --release-id RELEASE_ID`.
+This finalizes an approved release and does not bypass review. Verify the flags
+with `goalmatic --help`; older npm beta versions may not include them yet.
+
+The existing `publish --test-build-id BUILD_ID` path remains available when the
+clean local checkout already matches the configured production branch and commit.

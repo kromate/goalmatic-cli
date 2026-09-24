@@ -2,7 +2,7 @@ import { CliError } from './errors.mjs'
 
 const VALUE_OPTIONS = new Set([
   'api-url', 'account', 'name', 'type', 'project', 'owner', 'repo',
-  'production-branch', 'preview-branch', 'version-id', 'test-build-id',
+  'production-branch', 'preview-branch', 'version-id', 'test-build-id', 'release-id',
 ])
 
 export function parseOptions(argv) {
@@ -27,7 +27,7 @@ export function parseOptions(argv) {
       options[key] = optionValue
       continue
     }
-    if (!['json', 'yes', 'help', 'version', 'preview', 'private', 'local'].includes(key)) {
+    if (!['json', 'yes', 'help', 'version', 'preview', 'private', 'local', 'from-preview', 'dry-run'].includes(key)) {
       throw new CliError(`Unknown option --${key}`, 2)
     }
     if (separator !== -1) throw new CliError(`--${key} does not accept a value`, 2)

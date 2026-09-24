@@ -22,6 +22,13 @@ Commands:
   deploy --preview      Create a preview deployment from the pinned source
   publish               Publish a Site or submit an App release for review
 
+App publication:
+  publish --from-preview [--test-build-id ID]
+                         Promote the tested preview to the configured production branch
+  publish --release-id ID
+                         Publish an exact approved Store release
+  --dry-run              Show the publication plan without changing remote state
+
 Global options:
   --api-url <origin>     Use HTTPS, or loopback HTTP for local development
   --json                 Print machine-readable output

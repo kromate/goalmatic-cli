@@ -21,5 +21,9 @@ Run `npx goalmatic@beta --help` or `goalmatic --help` after a global install.
 | `dev` | Run the project’s npm dev script. |
 | `deploy --preview` | Create a preview deployment. |
 | `publish` | Publish a Site or submit an App release. |
+| `publish --from-preview [--test-build-id ID] [--dry-run] [--yes]` | Plan or submit the exact ready App test tree from a clean local preview checkout. |
+| `publish --release-id ID [--dry-run] [--yes]` | Plan or finalize an already approved App release. |
 
 Global options include `--api-url <origin>`, `--account <account-id>`, `--project <project-id>`, `--json`, `--yes`, `--help`, and `--version` where supported. Project options include `--name`, `--type site|app`, `--owner`, `--repo`, `--production-branch`, `--preview-branch`, `--version-id`, and `--test-build-id`. `deploy` requires `--preview`. `git connect --owner <owner> --repo <repo>` is the non-interactive GitHub form, and repository creation also requires `--yes`.
+
+`--dry-run` performs a plan-only read. The server checks the current ready test build and tree for the actual submit. `--yes` is required for non-interactive submit scripts. Verify `goalmatic --help` before using `--from-preview` or `--release-id`; older npm beta versions may not expose those flags.
