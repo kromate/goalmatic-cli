@@ -241,7 +241,9 @@ function formatAppPublication(result) {
   }
   lines.push(`App release ${result.releaseId || ''} status: ${releaseStatus}.`)
   if (orchestrationStatus) lines.push(`Publication orchestration: ${orchestrationStatus} at ${result.orchestrationStage || 'unknown'}.`)
-  if (releaseStatus !== 'published' || (orchestrationStatus && orchestrationStatus !== 'complete')) {
+  if (['submitted', 'in_review'].includes(releaseStatus) && !orchestrationStatus) {
+    lines.push('Submitted for review. This release is not confirmed live yet; it goes live automatically once approved unless the App uses manual release. Run goalmatic status to follow it.')
+  } else if (releaseStatus !== 'published' || (orchestrationStatus && orchestrationStatus !== 'complete')) {
     lines.push('This release is not confirmed live. Run goalmatic status --json to follow review and publication.')
   } else if (result.runtimeUrl) {
     lines.push(`Live runtime: ${result.runtimeUrl}`)

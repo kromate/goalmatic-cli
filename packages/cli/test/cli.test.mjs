@@ -400,6 +400,7 @@ test('simulated tested-preview publication plans without writes then posts the e
     assert.match(human.stdout, new RegExp(`Artifact: artifact_1 / ${'d'.repeat(64)}`))
     assert.match(human.stdout, /App release release_1 status: submitted/)
     assert.match(human.stdout, /not confirmed live/)
+    assert.match(human.stdout, /goes live automatically once approved/)
   })
   assert.deepEqual(writes, [{ testBuildId: 'build_ready' }, { testBuildId: 'build_ready' }])
   assert.equal((await run('git', ['rev-parse', 'HEAD'], { cwd: projectDirectory })).stdout.trim(), commitSha)
