@@ -191,7 +191,12 @@ async function refresh(credential) {
     client_id: credential.clientId,
   }))
   if (response.status === 400 || response.status === 401) {
-    if (['invalid_grant', 'invalid_client'].includes(body?.error)) return null
+    if (body?.error === 'invalid_client') {
+      // The server no longer knows this client; drop it so the next login registers a new one.
+      await rm(mcpCredentialPath(), { force: true })
+      return null
+    }
+    if (body?.error === 'invalid_grant') return null
   }
   if (!response.ok || !body?.access_token) throw new Error(`Goalmatic could not refresh the connection (HTTP ${response.status})`)
   const next = {
@@ -310,8 +315,11 @@ export async function runMcpProxy({ mcpUrl, input = process.stdin, write = line 
         for (const reply of replies || []) write(reply)
       } catch (error) {
         log(error.message)
-        if (message && message.id !== undefined) {
-          write(JSON.stringify({ jsonrpc: '2.0', id: message.id, error: { code: -32603, message: error.message } }))
+        // A batch gets one error per request that expects a reply.
+        for (const request of Array.isArray(message) ? message : [message]) {
+          if (request && request.id !== undefined) {
+            write(JSON.stringify({ jsonrpc: '2.0', id: request.id, error: { code: -32603, message: error.message } }))
+          }
         }
       }
     })()

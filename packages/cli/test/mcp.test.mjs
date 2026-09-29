@@ -85,7 +85,7 @@ test('the stdio proxy forwards JSON-RPC and refreshes an expired token once', as
     const saved = JSON.parse(await readFile(mcpCredentialPath(), 'utf8'))
     assert.equal(saved.accessToken, 'gmx_fresh')
     assert.equal(saved.refreshToken, 'gmxr_next')
-    assert.equal((await stat(mcpCredentialPath())).mode & 0o777, 0o600)
+    if (process.platform !== 'win32') assert.equal((await stat(mcpCredentialPath())).mode & 0o777, 0o600)
   } finally {
     server.close()
   }
@@ -121,6 +121,67 @@ test('a transient refresh failure keeps the saved connection instead of opening 
     await done
     assert.equal(JSON.parse(lines[0]).error.code, -32603)
     assert.equal(JSON.parse(await readFile(mcpCredentialPath(), 'utf8')).refreshToken, 'gmxr_old')
+  } finally {
+    server.close()
+  }
+})
+
+test('a failed batch returns one error per request and none for notifications', async () => {
+  process.env.XDG_CONFIG_HOME = await mkdtemp(join(tmpdir(), 'goalmatic-mcp-'))
+  const server = createServer((req, res) => {
+    if (req.url === '/oauth/token') return res.writeHead(503).end('busy')
+    res.writeHead(404).end()
+  })
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  const mcpUrl = `http://127.0.0.1:${server.address().port}/mcp`
+  try {
+    await writePrivateJson(mcpCredentialPath(), {
+      mcpUrl, clientId: 'gmcl_test', tokenEndpoint: new URL('/oauth/token', mcpUrl).toString(),
+      accessToken: 'gmx_old', refreshToken: 'gmxr_old', expiresAt: Date.now() - 1000,
+    })
+    const input = new PassThrough()
+    const lines = []
+    const done = runMcpProxy({ mcpUrl, input, write: line => lines.push(line) })
+    input.write(`${JSON.stringify([
+      { jsonrpc: '2.0', id: 1, method: 'ping' },
+      { jsonrpc: '2.0', method: 'notifications/initialized' },
+      { jsonrpc: '2.0', id: 'two', method: 'tools/list' },
+    ])}\n`)
+    input.end()
+    await done
+    const replies = lines.map(line => JSON.parse(line))
+    assert.deepEqual(replies.map(reply => reply.id), [1, 'two'])
+    assert.ok(replies.every(reply => reply.error.code === -32603))
+  } finally {
+    server.close()
+  }
+})
+
+test('a refresh rejected with invalid_client forgets the saved client', async () => {
+  process.env.XDG_CONFIG_HOME = await mkdtemp(join(tmpdir(), 'goalmatic-mcp-'))
+  const server = createServer((req, res) => {
+    if (req.url === '/oauth/token') {
+      res.writeHead(401, { 'content-type': 'application/json' })
+      return res.end(JSON.stringify({ error: 'invalid_client' }))
+    }
+    // Discovery fails, so the new login stops before opening a browser.
+    res.writeHead(404).end()
+  })
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  const mcpUrl = `http://127.0.0.1:${server.address().port}/mcp`
+  try {
+    await writePrivateJson(mcpCredentialPath(), {
+      mcpUrl, clientId: 'gmcl_gone', tokenEndpoint: new URL('/oauth/token', mcpUrl).toString(),
+      accessToken: 'gmx_old', refreshToken: 'gmxr_old', expiresAt: Date.now() - 1000,
+    })
+    const input = new PassThrough()
+    const lines = []
+    const done = runMcpProxy({ mcpUrl, input, write: line => lines.push(line) })
+    input.write(`${JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'ping' })}\n`)
+    input.end()
+    await done
+    assert.equal(JSON.parse(lines[0]).error.code, -32603)
+    await assert.rejects(stat(mcpCredentialPath()), { code: 'ENOENT' })
   } finally {
     server.close()
   }
