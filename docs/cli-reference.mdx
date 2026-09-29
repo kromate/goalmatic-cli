@@ -23,7 +23,28 @@ Run `npx goalmatic@beta --help` or `goalmatic --help` after a global install.
 | `publish` | Publish a Site or submit an App release. |
 | `publish --from-preview [--test-build-id ID] [--dry-run] [--yes]` | Plan or submit the exact ready App test tree from a clean local preview checkout. |
 | `publish --release-id ID [--dry-run] [--yes]` | Plan or finalize an already approved App release. |
+| `mcp` | Run a local stdio MCP server for Goalmatic and your installed Apps. |
+| `mcp login` / `mcp logout` | Connect or disconnect the MCP server. |
+| `mcp config` | Print configuration for MCP clients. |
 
 Global options include `--api-url <origin>`, `--account <account-id>`, `--project <project-id>`, `--json`, `--yes`, `--help`, and `--version` where supported. Project options include `--name`, `--type site|app`, `--owner`, `--repo`, `--production-branch`, `--preview-branch`, `--version-id`, and `--test-build-id`. `deploy` requires `--preview`. `git connect --owner <owner> --repo <repo>` is the non-interactive GitHub form, and repository creation also requires `--yes`.
 
 `--dry-run` performs a plan-only read. The server checks the current ready test build and tree for the actual submit. `--yes` is required for non-interactive submit scripts. Verify `goalmatic --help` before using `--from-preview` or `--release-id`; older npm beta versions may not expose those flags.
+
+## MCP server
+
+Goalmatic hosts an MCP server at `https://goalmatic.io/mcp`. It exposes Goalmatic (agents, workflows, tables, integrations, Explore, Requests, Partner dashboard, workspaces, credits and the Website Builder) and every App installed in your workspace through six tools: `whoami`, `list_workspaces`, `list_apps`, `search_operations`, `describe_operation` and `execute_operation`.
+
+Clients with remote MCP and OAuth support connect directly:
+
+```bash
+claude mcp add --transport http goalmatic https://goalmatic.io/mcp
+```
+
+For clients that only run local servers, `goalmatic mcp` starts a stdio server that forwards to the hosted one:
+
+```bash
+claude mcp add goalmatic -- npx -y goalmatic mcp
+```
+
+The first run opens Goalmatic in your browser once so you can choose workspaces and permissions. The connection is saved in `~/.config/goalmatic/mcp.json` (mode 0600) and refreshes itself. `goalmatic mcp logout` revokes it; you can also disconnect it in Goalmatic under Settings → AI connections. Deletes, disconnects, payments and site publishing always ask you to confirm on goalmatic.io first. `--mcp-url <url>` or `GOALMATIC_MCP_URL` points the command at another server.

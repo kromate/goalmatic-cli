@@ -62,3 +62,19 @@ with `goalmatic --help`; older npm beta versions may not include them yet.
 
 The existing `publish --test-build-id BUILD_ID` path remains available when the
 clean local checkout already matches the configured production branch and commit.
+
+## MCP server
+
+`goalmatic mcp` runs a local stdio MCP server that forwards to the hosted
+Goalmatic MCP server at `https://goalmatic.io/mcp`. It gives AI tools such as
+Claude Code access to Goalmatic and every App installed in your workspace.
+
+```bash
+claude mcp add goalmatic -- npx -y goalmatic mcp
+```
+
+The first run opens Goalmatic once so you can choose workspaces and
+permissions; the connection is stored in `~/.config/goalmatic/mcp.json` with
+restricted permissions and refreshes itself. `goalmatic mcp logout` revokes it,
+and `goalmatic mcp config` prints configuration for clients that connect to the
+hosted server directly.
