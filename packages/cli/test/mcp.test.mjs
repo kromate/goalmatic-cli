@@ -5,7 +5,7 @@ import { mkdtemp, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
-import { mcpCredentialPath, normalizeMcpUrl, runMcpProxy } from '../src/mcp.mjs'
+import { jsonRpcLines, mcpCredentialPath, normalizeMcpUrl, runMcpProxy } from '../src/mcp.mjs'
 import { writePrivateJson } from '../src/fs-state.mjs'
 
 async function fakeGoalmatic() {
@@ -86,6 +86,41 @@ test('the stdio proxy forwards JSON-RPC and refreshes an expired token once', as
     assert.equal(saved.accessToken, 'gmx_fresh')
     assert.equal(saved.refreshToken, 'gmxr_next')
     assert.equal((await stat(mcpCredentialPath())).mode & 0o777, 0o600)
+  } finally {
+    server.close()
+  }
+})
+
+test('event-stream and pretty-printed replies become one JSON-RPC message per line', () => {
+  assert.deepEqual(jsonRpcLines('{\n  "jsonrpc": "2.0",\n  "id": 1\n}', 'application/json'), ['{"jsonrpc":"2.0","id":1}'])
+  assert.deepEqual(
+    jsonRpcLines('event: message\ndata: {"id":1}\n\nevent: message\ndata: {"id":\ndata: 2}\n\n', 'text/event-stream'),
+    ['{"id":1}', '{"id":2}'],
+  )
+  assert.deepEqual(jsonRpcLines('[{"id":1},{"id":2}]', 'application/json'), ['{"id":1}', '{"id":2}'])
+})
+
+test('a transient refresh failure keeps the saved connection instead of opening the browser', async () => {
+  process.env.XDG_CONFIG_HOME = await mkdtemp(join(tmpdir(), 'goalmatic-mcp-'))
+  const server = createServer((req, res) => {
+    if (req.url === '/oauth/token') return res.writeHead(503).end('busy')
+    res.writeHead(404).end()
+  })
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  const mcpUrl = `http://127.0.0.1:${server.address().port}/mcp`
+  try {
+    await writePrivateJson(mcpCredentialPath(), {
+      mcpUrl, clientId: 'gmcl_test', tokenEndpoint: new URL('/oauth/token', mcpUrl).toString(),
+      accessToken: 'gmx_old', refreshToken: 'gmxr_old', expiresAt: Date.now() - 1000,
+    })
+    const input = new PassThrough()
+    const lines = []
+    const done = runMcpProxy({ mcpUrl, input, write: line => lines.push(line) })
+    input.write(`${JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'ping' })}\n`)
+    input.end()
+    await done
+    assert.equal(JSON.parse(lines[0]).error.code, -32603)
+    assert.equal(JSON.parse(await readFile(mcpCredentialPath(), 'utf8')).refreshToken, 'gmxr_old')
   } finally {
     server.close()
   }

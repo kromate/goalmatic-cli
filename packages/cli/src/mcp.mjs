@@ -13,7 +13,9 @@ const SCOPES = 'goalmatic:read goalmatic:write goalmatic:run'
 const LOGIN_TIMEOUT_MS = 10 * 60_000
 
 // stdout carries JSON-RPC in `goalmatic mcp`, so every human message goes to stderr.
-const log = message => process.stderr.write(`[goalmatic mcp] ${message}\n`)
+// Text from the network can carry terminal escape sequences; drop control characters.
+const printable = value => String(value ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '')
+const log = message => process.stderr.write(`[goalmatic mcp] ${printable(message)}\n`)
 
 export function normalizeMcpUrl(value) {
   const raw = value || process.env.GOALMATIC_MCP_URL || DEFAULT_MCP_URL
@@ -58,6 +60,13 @@ async function discover(mcpUrl) {
   if (!response.ok || !body?.token_endpoint || !body?.authorization_endpoint) {
     throw new CliError(`Could not read Goalmatic's sign-in configuration from ${origin}`)
   }
+  // The server only tells us where to send the browser and the tokens, so it
+  // must not be able to point them at another host.
+  for (const key of ['authorization_endpoint', 'token_endpoint', 'registration_endpoint', 'revocation_endpoint']) {
+    if (body[key] && new URL(body[key]).origin !== origin) {
+      throw new CliError(`The sign-in configuration from ${origin} points ${key} at another host, so it was not used`)
+    }
+  }
   return body
 }
 
@@ -89,7 +98,7 @@ function waitForCallback(server, state) {
       clearTimeout(timer)
       if (url.searchParams.get('error')) {
         done(200, 'Connection cancelled')
-        reject(new CliError(url.searchParams.get('error_description') || 'Goalmatic sign-in was cancelled'))
+        reject(new CliError(printable(url.searchParams.get('error_description')) || 'Goalmatic sign-in was cancelled'))
         return
       }
       done(200, 'Goalmatic is connected')
@@ -112,6 +121,7 @@ export async function mcpLogin({ mcpUrl, output = { info: log } } = {}) {
     const saved = await readJson(mcpCredentialPath(), { optional: true })
     let clientId = saved?.mcpUrl === mcpUrl ? saved.clientId : null
     if (!clientId) {
+      if (!metadata.registration_endpoint) throw new CliError('This MCP server does not allow new clients to register')
       const { response, body } = await fetchJson(metadata.registration_endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -143,7 +153,8 @@ export async function mcpLogin({ mcpUrl, output = { info: log } } = {}) {
     })) authorize.searchParams.set(key, value)
 
     const callback = waitForCallback(server, state)
-    output.info(`Opening Goalmatic to connect this computer: ${authorize}`)
+    const host = new URL(mcpUrl).host
+    output.info(host === 'goalmatic.io' ? `Opening Goalmatic to connect this computer: ${authorize}` : `Opening ${host} (not goalmatic.io) to connect this computer: ${authorize}`)
     if (!await openBrowser(authorize.toString())) output.info('Open the link above in your browser to continue.')
     const code = await callback
     const { response, body } = await fetchJson(metadata.token_endpoint, form({
@@ -153,7 +164,7 @@ export async function mcpLogin({ mcpUrl, output = { info: log } } = {}) {
       redirect_uri: redirectUri,
       code_verifier: verifier,
     }))
-    if (!response.ok || !body?.access_token) throw new CliError(body?.error_description || 'Goalmatic did not issue a token')
+    if (!response.ok || !body?.access_token) throw new CliError(printable(body?.error_description) || 'Goalmatic did not issue a token')
     const credential = {
       mcpUrl,
       clientId,
@@ -171,13 +182,18 @@ export async function mcpLogin({ mcpUrl, output = { info: log } } = {}) {
   }
 }
 
+// Returns the new credential, null when the server rejected the refresh token
+// (sign in again), and throws for anything transient (retry, keep the token).
 async function refresh(credential) {
   const { response, body } = await fetchJson(credential.tokenEndpoint, form({
     grant_type: 'refresh_token',
     refresh_token: credential.refreshToken,
     client_id: credential.clientId,
   }))
-  if (!response.ok || !body?.access_token) return null
+  if (response.status === 400 || response.status === 401) {
+    if (['invalid_grant', 'invalid_client'].includes(body?.error)) return null
+  }
+  if (!response.ok || !body?.access_token) throw new Error(`Goalmatic could not refresh the connection (HTTP ${response.status})`)
   const next = {
     ...credential,
     accessToken: body.access_token,
@@ -205,6 +221,24 @@ export async function mcpLogout({ mcpUrl }) {
   return { hadCredential: true, remoteRevoked }
 }
 
+/** Turns a JSON or event-stream reply into single-line JSON-RPC messages. */
+export function jsonRpcLines(text, contentType = '') {
+  if (contentType.includes('text/event-stream')) {
+    const messages = []
+    let data = []
+    for (const line of `${text}\n`.split(/\r?\n/)) {
+      if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''))
+      else if (line === '' && data.length) {
+        messages.push(JSON.stringify(JSON.parse(data.join('\n'))))
+        data = []
+      }
+    }
+    return messages
+  }
+  const parsed = JSON.parse(text)
+  return Array.isArray(parsed) ? parsed.map(message => JSON.stringify(message)) : [JSON.stringify(parsed)]
+}
+
 export function mcpClientConfig(mcpUrl) {
   return {
     remote: {
@@ -229,7 +263,7 @@ export async function runMcpProxy({ mcpUrl, input = process.stdin, write = line 
   async function ensureCredential(force = false) {
     if (!force && credential && credential.expiresAt - 60_000 > Date.now()) return credential
     authenticating ||= (async () => {
-      const refreshed = credential?.refreshToken ? await refresh(credential).catch(() => null) : null
+      const refreshed = credential?.refreshToken ? await refresh(credential) : null
       credential = refreshed || await mcpLogin({ mcpUrl })
       return credential
     })().finally(() => { authenticating = null })
@@ -256,7 +290,7 @@ export async function runMcpProxy({ mcpUrl, input = process.stdin, write = line 
     if (response.status === 202 || response.status === 204) return null
     const text = await response.text()
     if (!response.ok) throw new Error(`Goalmatic returned HTTP ${response.status}${text ? `: ${text.slice(0, 300)}` : ''}`)
-    return text
+    return jsonRpcLines(text, response.headers.get('content-type') || '')
   }
 
   const lines = createInterface({ input, crlfDelay: Infinity })
@@ -272,8 +306,8 @@ export async function runMcpProxy({ mcpUrl, input = process.stdin, write = line 
         return
       }
       try {
-        const reply = await forward(message)
-        if (reply) write(reply.trim().replace(/\n/g, ''))
+        const replies = await forward(message)
+        for (const reply of replies || []) write(reply)
       } catch (error) {
         log(error.message)
         if (message && message.id !== undefined) {
