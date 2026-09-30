@@ -2,7 +2,7 @@ import { CliError } from './errors.mjs'
 
 const VALUE_OPTIONS = new Set([
   'api-url', 'account', 'name', 'type', 'project', 'owner', 'repo',
-  'production-branch', 'preview-branch', 'version-id', 'test-build-id', 'release-id',
+  'production-branch', 'preview-branch', 'version-id', 'test-build-id', 'release-id', 'mcp-url',
 ])
 
 export function parseOptions(argv) {

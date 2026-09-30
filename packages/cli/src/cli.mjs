@@ -9,6 +9,7 @@ import { createOutput } from './output.mjs'
 import { createProjectFlow, linkProjectFlow, listProjects, selectAccount } from './project.mjs'
 import { confirmDefaultYes, promptSession } from './prompts.mjs'
 import { deployPreview, projectStatus, publishProject, runDev } from './release.mjs'
+import { mcpClientConfig, mcpLogin, mcpLogout, normalizeMcpUrl, runMcpProxy } from './mcp.mjs'
 import { normalizeApiOrigin } from './url.mjs'
 
 export async function main(argv = [], runtime = {}) {
@@ -19,6 +20,7 @@ export async function main(argv = [], runtime = {}) {
 
   const command = positional[0]
   validateCommandOptions(command, options)
+  if (command === 'mcp') return runMcpCommand(positional[1], options, output)
   const abortController = new AbortController()
   const onInterrupt = () => abortController.abort()
   process.once('SIGINT', onInterrupt)
@@ -124,7 +126,37 @@ export async function main(argv = [], runtime = {}) {
   }
 }
 
+async function runMcpCommand(subcommand, options, output) {
+  const mcpUrl = normalizeMcpUrl(options['mcp-url'])
+  if (!subcommand || subcommand === 'serve') return runMcpProxy({ mcpUrl })
+  if (subcommand === 'login') {
+    const credential = await mcpLogin({ mcpUrl, output })
+    return output.result(options.json ? { mcpUrl, scope: credential.scope } : `Goalmatic MCP is connected (${credential.scope}).`)
+  }
+  if (subcommand === 'logout') {
+    const result = await mcpLogout({ mcpUrl })
+    const message = !result.hadCredential
+      ? 'No saved Goalmatic MCP connection was present.'
+      : result.remoteRevoked ? 'Disconnected and revoked the Goalmatic MCP connection.' : 'Removed the local connection. Revoke it in Goalmatic Settings → AI connections.'
+    return output.result(options.json ? result : message)
+  }
+  if (subcommand === 'config') {
+    const config = mcpClientConfig(mcpUrl)
+    return output.result(options.json ? config : [
+      'Hosted (Claude, ChatGPT, Cursor, any MCP client with OAuth):',
+      `  ${config.remote.claudeCode}`,
+      `  ${JSON.stringify(config.remote.json)}`,
+      '',
+      'Local stdio (clients without remote MCP support):',
+      `  ${config.local.claudeCode}`,
+      `  ${JSON.stringify(config.local.json)}`,
+    ].join('\n'))
+  }
+  throw new CliError(`Unknown mcp command: ${subcommand}. Use goalmatic mcp [serve|login|logout|config]`, 2)
+}
+
 function validateCommandOptions(command, options) {
+  if (command !== 'mcp' && options['mcp-url']) throw new CliError('--mcp-url can be used only with mcp', 2)
   const publicationOnly = ['from-preview', 'release-id', 'dry-run'].filter(option => options[option])
   if (command !== 'publish' && publicationOnly.length) {
     throw new CliError(`${publicationOnly.map(option => `--${option}`).join(', ')} can be used only with publish`, 2)

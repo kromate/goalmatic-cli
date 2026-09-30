@@ -21,6 +21,9 @@ Commands:
   dev                   Run the project's npm dev script
   deploy --preview      Create a preview deployment from the pinned source
   publish               Publish a Site or submit an App release for review
+  mcp                   Run a local MCP server for Goalmatic and your installed Apps
+  mcp login|logout      Connect or disconnect the MCP server
+  mcp config            Print MCP client configuration
 
 App publication:
   publish --from-preview [--test-build-id ID]
@@ -31,6 +34,7 @@ App publication:
 
 Global options:
   --api-url <origin>     Use HTTPS, or loopback HTTP for local development
+  --mcp-url <url>        MCP server for the mcp command (default https://goalmatic.io/mcp)
   --json                 Print machine-readable output
   --yes                  Accept an exact non-interactive choice where supported
   --local                Scaffold without login or remote project creation
