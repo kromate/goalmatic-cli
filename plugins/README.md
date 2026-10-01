@@ -33,7 +33,7 @@ Public distribution uses one shared directory listing for ChatGPT and Codex afte
 | `publish_project` | Publish an exact version after Goalmatic approval |
 | `get_deployment` | Read deployment progress and result |
 
-The plugin has no payment, messaging, App-installation, App Store submission, or arbitrary-operation tools. Project publication makes content public. Source writes require stable idempotency keys, and updates require a base version. Access is limited to selected workspaces and remains subject to current membership and project ownership.
+The plugin has no payment, messaging, App-installation, App Store submission, or arbitrary-operation tools. Draft previews can be accessible to anyone with the link, and source changes can update those previews. Production publication makes the selected version live. Source writes require stable idempotency keys, and updates require a base version. Access is limited to selected workspaces and remains subject to current membership and project ownership.
 
 ## Package and validate
 

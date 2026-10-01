@@ -9,6 +9,8 @@ Use only the named tools exposed by this plugin. Determine the intended workspac
 
 For a simple website, author complete HTML documents with responsive styling and use `projectMode: html`, `projectType: website`. For a Vue project, provide Vue source and use `projectMode: vue`. A Goalmatic App uses `projectType: goalmatic-app` and Vue mode; do not invent backend capabilities or App SDK contracts. Build a simple local interaction unless a supported data contract is already available in the project.
 
+Before saving, make clear that a draft preview can be accessible to anyone with its link, even before production publication. Do not save sensitive material unless the intended preview access has been established.
+
 Call `create_project` with complete `initialFiles` and a unique `idempotencyKey` for this intended creation. Reuse the exact key and arguments after an uncertain result. Do not create a second project just because the first request timed out. Never include secrets, personal data from other projects, or unrequested third-party tracking in source files.
 
 Call `get_project` and return its editor or preview URL. Explain that it is a draft. Preview URLs may expose draft content to anyone who receives the link; do not promise confidentiality beyond Goalmatic's returned access controls.

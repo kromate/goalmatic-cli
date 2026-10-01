@@ -21,7 +21,7 @@
       "interface": {
         "displayName": "Goalmatic",
         "shortDescription": "Build websites and simple Apps",
-        "longDescription": "Create website and simple App projects from a brief, inspect source files, make revision-checked edits, and open previews in your Goalmatic workspace. Publish an exact project version after approving it on Goalmatic, then check deployment status.\n\nA Goalmatic account and connection are required. You choose the workspaces and permissions to grant. This plugin supports project source and publishing; it does not send messages, process payments, install Apps, list Apps in the Goalmatic App Store, or execute arbitrary platform operations. Stored quality results do not replace testing your project.",
+        "longDescription": "Create website and simple App projects from a brief, inspect source files, make revision-checked edits, and open previews in your Goalmatic workspace. Draft previews can be accessible to anyone with the link; unpublished does not mean private. Publish an exact project version after approving it on Goalmatic, then check deployment status.\n\nA Goalmatic account and connection are required. You choose the workspaces and permissions to grant. This plugin supports project source and publishing; it does not send messages, process payments, install Apps, list Apps in the Goalmatic App Store, or execute arbitrary platform operations. Stored quality results do not replace testing your project.",
         "developerName": "Goalmatic",
         "category": "Developer Tools",
         "capabilities": [
