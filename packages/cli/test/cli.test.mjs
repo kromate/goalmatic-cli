@@ -676,7 +676,7 @@ function run(command, args, { cwd, env = process.env } = {}) {
     child.stdout.on('data', chunk => { stdout += chunk })
     child.stderr.on('data', chunk => { stderr += chunk })
     child.once('error', rejectPromise)
-    child.once('exit', code => resolvePromise({ code, stdout, stderr }))
+    child.once('close', code => resolvePromise({ code, stdout, stderr }))
   })
 }
 

@@ -370,7 +370,7 @@ function runGit(directory, args, { allowFailure = false } = {}) {
     child.stdout.on('data', chunk => { stdout += chunk })
     child.stderr.on('data', chunk => { stderr += chunk })
     child.once('error', error => reject(new CliError(`Could not run git: ${error.message}`)))
-    child.once('exit', code => {
+    child.once('close', code => {
       if (code === 0 || allowFailure) resolve({ code, stdout, stderr })
       else reject(new CliError(stderr.trim() || `git ${args[0]} failed`))
     })
@@ -385,7 +385,7 @@ function runGitBuffer(directory, args) {
     child.stdout.on('data', chunk => { stdout.push(chunk) })
     child.stderr.on('data', chunk => { stderr += chunk })
     child.once('error', error => reject(new CliError(`Could not run git: ${error.message}`)))
-    child.once('exit', code => {
+    child.once('close', code => {
       if (code === 0) resolve({ stdout: Buffer.concat(stdout) })
       else reject(new CliError(stderr.trim() || `git ${args[0]} failed`))
     })
