@@ -14,3 +14,4 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm test
       - run: npm run pack:inspect
+      - run: npm run pack:plugin

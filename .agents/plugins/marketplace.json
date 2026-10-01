@@ -1,0 +1,20 @@
+{
+  "name": "goalmatic-plugins",
+  "interface": {
+    "displayName": "Goalmatic Plugins"
+  },
+  "plugins": [
+    {
+      "name": "goalmatic",
+      "source": {
+        "source": "local",
+        "path": "./plugins/goalmatic"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
