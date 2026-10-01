@@ -37,6 +37,8 @@ The plugin has no payment, messaging, App-installation, App Store submission, or
 
 ## Package and validate
 
+Use Node.js 24 and Python 3 (available as `python3`) to run the tests and create the reproducible ZIP.
+
 ```sh
 npm run test:plugin
 npm run pack:plugin

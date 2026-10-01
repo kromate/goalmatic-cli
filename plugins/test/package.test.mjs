@@ -58,7 +58,7 @@ test('bundle consists only of reviewed text/assets without symlinks or hidden cr
       const path = join(dir, entry.name)
       if (entry.isDirectory()) await visit(path)
       else {
-        const name = relative(root, path)
+        const name = relative(root, path).replaceAll('\\', '/')
         assert.ok(allowed.has(name), `Unexpected bundle file: ${name}`)
         const text = await readFile(path, 'utf8')
         assert.doesNotMatch(text, /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|gmxr?_[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}/)
