@@ -1,19 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-const projectType = '{{PROJECT_TYPE}}'
+type ProjectType = 'app' | 'site'
+type Filter = 'all' | 'open' | 'done'
+type Mode = 'live' | 'demo' | 'local'
+
+interface Task {
+  id: string
+  title: string
+  completed: boolean
+}
+
+interface HostedRuntime {
+  auth: GoalmaticAuthGlobal
+  data: GoalmaticDataGlobal
+}
+
+const projectType = '{{PROJECT_TYPE}}' as ProjectType
 const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
 const isHostedApp = projectType === 'app' && !isLocalhost
-const tasks = ref([])
+const tasks = ref<Task[]>([])
 const draft = ref('')
-const filter = ref('all')
+const filter = ref<Filter>('all')
 const busy = ref(false)
 const loading = ref(true)
 const error = ref('')
-const mode = ref(isHostedApp ? 'live' : projectType === 'app' ? 'demo' : 'local')
+const mode = ref<Mode>(isHostedApp ? 'live' : projectType === 'app' ? 'demo' : 'local')
 let requestGeneration = 0
 let accountKey = ''
-let unsubscribeAuth
+let unsubscribeAuth: (() => void) | undefined
 
 const visibleTasks = computed(() => tasks.value.filter(task => (
   filter.value === 'all' || (filter.value === 'done' ? task.completed : !task.completed)
@@ -21,21 +36,28 @@ const visibleTasks = computed(() => tasks.value.filter(task => (
 const remaining = computed(() => tasks.value.filter(task => !task.completed).length)
 const completed = computed(() => tasks.value.length - remaining.value)
 
-function messageFor(error) {
-  return error instanceof Error && error.message ? error.message : 'The request did not finish. Try again.'
+function messageFor(cause: unknown): string {
+  return cause instanceof Error && cause.message ? cause.message : 'The request did not finish. Try again.'
 }
 
-function normalize(record) {
-  return { id: String(record.id), title: String(record.title || '').trim(), completed: Boolean(record.completed) }
-}
-
-function requireRuntime() {
-  if (!window.GoalmaticAuth || !window.GoalmaticData) {
-    throw new Error('This hosted App needs GoalmaticAuth and GoalmaticData. Reopen it from Goalmatic after installation, then reload.')
+function normalize(record: GoalmaticRecordRow): Task {
+  return {
+    id: String(record.id),
+    title: typeof record.title === 'string' ? record.title.trim() : String(record.title ?? '').trim(),
+    completed: Boolean(record.completed),
   }
 }
 
-async function reload() {
+function requireRuntime(): HostedRuntime {
+  const auth = window.GoalmaticAuth
+  const data = window.GoalmaticData
+  if (!auth || !data) {
+    throw new Error('This hosted App needs GoalmaticAuth and GoalmaticData. Reopen it from Goalmatic after installation, then reload.')
+  }
+  return { auth, data }
+}
+
+async function reload(): Promise<void> {
   const generation = ++requestGeneration
   error.value = ''
   loading.value = true
@@ -44,13 +66,13 @@ async function reload() {
       tasks.value = []
       return
     }
-    requireRuntime()
-    const user = await window.GoalmaticAuth.getUser()
+    const runtime = requireRuntime()
+    const user = await runtime.auth.getUser()
     if (!user) throw new Error('Your Goalmatic session is unavailable. Sign in again, then reload this App.')
-    const result = await window.GoalmaticData.fetchAll('todos', { pageSize: 100, maxRecords: 500 })
+    const result = await runtime.data.fetchAll('todos', { pageSize: 100, maxRecords: 500 })
     if (generation !== requestGeneration) return
     tasks.value = result.records.map(normalize).filter(task => task.title)
-  } catch (cause) {
+  } catch (cause: unknown) {
     if (generation !== requestGeneration) return
     if (isHostedApp) tasks.value = []
     error.value = messageFor(cause)
@@ -59,7 +81,7 @@ async function reload() {
   }
 }
 
-async function addTask() {
+async function addTask(): Promise<void> {
   const title = draft.value.trim()
   if (!title || busy.value) return
   busy.value = true
@@ -68,19 +90,19 @@ async function addTask() {
     if (!isHostedApp) {
       tasks.value.unshift({ id: crypto.randomUUID(), title, completed: false })
     } else {
-      requireRuntime()
-      await window.GoalmaticData.submit('todos', { title, completed: false })
+      const runtime = requireRuntime()
+      await runtime.data.submit('todos', { title, completed: false })
       await reload()
     }
     draft.value = ''
-  } catch (cause) {
+  } catch (cause: unknown) {
     error.value = messageFor(cause)
   } finally {
     busy.value = false
   }
 }
 
-async function toggleTask(task) {
+async function toggleTask(task: Task): Promise<void> {
   if (busy.value) return
   busy.value = true
   error.value = ''
@@ -88,18 +110,18 @@ async function toggleTask(task) {
     if (!isHostedApp) {
       task.completed = !task.completed
     } else {
-      requireRuntime()
-      await window.GoalmaticData.update('todos', task.id, { title: task.title, completed: !task.completed })
+      const runtime = requireRuntime()
+      await runtime.data.update('todos', task.id, { title: task.title, completed: !task.completed })
       await reload()
     }
-  } catch (cause) {
+  } catch (cause: unknown) {
     error.value = messageFor(cause)
   } finally {
     busy.value = false
   }
 }
 
-async function removeTask(task) {
+async function removeTask(task: Task): Promise<void> {
   if (busy.value) return
   busy.value = true
   error.value = ''
@@ -107,23 +129,29 @@ async function removeTask(task) {
     if (!isHostedApp) {
       tasks.value = tasks.value.filter(item => item.id !== task.id)
     } else {
-      requireRuntime()
-      await window.GoalmaticData.remove('todos', task.id)
+      const runtime = requireRuntime()
+      await runtime.data.remove('todos', task.id)
       await reload()
     }
-  } catch (cause) {
+  } catch (cause: unknown) {
     error.value = messageFor(cause)
   } finally {
     busy.value = false
   }
 }
 
+function keyFor(auth: GoalmaticAuthGlobal, user: GoalmaticUser | null): string {
+  const userId = user && typeof user.id === 'string' ? user.id : ''
+  return `${auth.account?.id ?? ''}:${userId}`
+}
+
 onMounted(async () => {
   await reload()
-  if (isHostedApp && window.GoalmaticAuth?.onAuthChange) {
-    accountKey = `${window.GoalmaticAuth.account?.id || ''}:${window.GoalmaticAuth.user?.id || ''}`
-    unsubscribeAuth = window.GoalmaticAuth.onAuthChange(user => {
-      const nextKey = `${window.GoalmaticAuth.account?.id || ''}:${user?.id || ''}`
+  const auth = window.GoalmaticAuth
+  if (isHostedApp && auth) {
+    accountKey = keyFor(auth, auth.user)
+    unsubscribeAuth = auth.onAuthChange(user => {
+      const nextKey = keyFor(auth, user)
       if (nextKey === accountKey) return
       accountKey = nextKey
       tasks.value = []
