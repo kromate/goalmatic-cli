@@ -10,5 +10,5 @@ An App is an authenticated product. The starter declares a private `todos` Table
 The local App Demo is explicit and resets on refresh. A hosted App requires a working Goalmatic runtime and account-scoped Table data. It does not silently replace a failed hosted request with sample data. A configured App that cannot initialize the runtime shows the error and stops.
 
 The canonical starter shell is `App.vue`. The todo route is `pages/index.vue`, and
-`main.js` installs the Vue Router and mounts the shell. Tasks stay in the page component for Sites and the local App Demo.
+`main.ts` installs the Vue Router and mounts the shell. The starter is strict TypeScript: `tsconfig.json`, `env.d.ts` (typed `GoalmaticAuth`/`GoalmaticData` globals) and `npm run typecheck` (vue-tsc) are included, and the hosted App compiler runs the same type check before a test build. Tasks stay in the page component for Sites and the local App Demo.
 The hosted App connects the same controls to Goalmatic Tables.
