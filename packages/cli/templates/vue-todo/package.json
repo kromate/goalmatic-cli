@@ -12,8 +12,8 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "build": "vite build",
     "check": "npm run typecheck && npm run build",
-    "goalmatic:deploy": "npx goalmatic@0.1.0-beta.2 deploy --preview",
-    "goalmatic:publish": "npx goalmatic@0.1.0-beta.2 publish"
+    "goalmatic:deploy": "npx goalmatic@0.1.0-beta.3 deploy --preview",
+    "goalmatic:publish": "npx goalmatic@0.1.0-beta.3 publish"
   },
   "dependencies": {
     "vue": "3.5.41",
